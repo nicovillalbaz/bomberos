@@ -1,0 +1,48 @@
+// Supabase client setup for Bomberos system
+// This file configures the Supabase client
+
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+}
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+
+// Helper function to get current user
+export const getCurrentUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return user;
+};
+
+// Helper function to get current user profile
+export const getCurrentProfile = async () => {
+  const user = await getCurrentUser();
+  const { data, error } = await supabase
+    .from('perfiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  
+  if (error) throw error;
+  return data;
+};
+
+// Helper to check if user has role
+export const hasRole = (profile: any, roles: string[]) => {
+  return roles.includes(profile?.rol);
+};
+
+// Helper to check if user is admin
+export const isAdmin = (profile: any) => hasRole(profile, ['admin']);
+
+// Helper to check if user is official or admin
+export const isOfficialOrAdmin = (profile: any) => hasRole(profile, ['oficial', 'admin']);
+
+// Helper to check if user is active
+export const isActive = (profile: any) => profile?.estado === 'activo';
