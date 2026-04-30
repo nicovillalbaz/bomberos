@@ -11,6 +11,7 @@ export interface Perfil {
   id: string
   nombre: string
   apellido: string
+  email: string
   telefono?: string | null
   codigo_interno?: string | null
   rol: RolUsuario
@@ -25,6 +26,8 @@ export interface Perfil {
 export interface PerfilCreate {
   nombre: string
   apellido: string
+  email: string
+  password: string
   telefono?: string | null
   codigo_interno?: string | null
   rol?: RolUsuario

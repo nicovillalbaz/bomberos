@@ -1,5 +1,5 @@
-﻿import { supabase } from '../lib/supabase'
-import type { Material, InventarioMovil } from '../types'
+﻿import { getSessionUserId, supabase } from '../lib/supabase'
+import type { InventarioMovil, Material } from '../types'
 
 export const getMateriales = async () => {
   const { data, error } = await (supabase as any).from('materiales').select('*').order('categoria,nombre')
@@ -17,9 +17,10 @@ export const getInventarioMovil = async (movilId: string) => {
 }
 
 export const updateInventarioMovil = async (movilId: string, materialId: string, cantidad: number) => {
+  const actorId = getSessionUserId()
   const { data, error } = await (supabase as any)
     .from('inventario_movil')
-    .upsert({ movil_id: movilId, material_id: materialId, cantidad }, { onConflict: 'movil_id,material_id' })
+    .upsert({ movil_id: movilId, material_id: materialId, cantidad, updated_by: actorId }, { onConflict: 'movil_id,material_id' })
     .select()
     .single()
   if (error) throw error
@@ -43,4 +44,3 @@ export const getInventarioDeposito = async () => {
   if (error) throw error
   return data
 }
-

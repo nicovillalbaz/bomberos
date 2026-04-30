@@ -32,7 +32,14 @@ export const getOficiales = async () => {
 }
 
 export const createPerfil = async (perfil: PerfilCreate) => {
-  const { data, error } = await (supabase as any).from('perfiles').insert([perfil]).select().single()
+  const { data, error } = await (supabase as any).rpc('create_perfil', {
+    p_nombre: perfil.nombre,
+    p_apellido: perfil.apellido,
+    p_email: perfil.email,
+    p_password: perfil.password,
+    p_rol: perfil.rol || 'bombero',
+    p_estado: perfil.estado || 'activo',
+  })
   if (error) throw error
   return data
 }

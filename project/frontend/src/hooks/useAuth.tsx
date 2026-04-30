@@ -1,10 +1,9 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import type { User } from '@supabase/supabase-js'
+﻿import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import type { Perfil } from '../types'
-import { supabase, getCurrentUser, getCurrentProfile, isAdmin, isOfficialOrAdmin, isActive } from '../lib/supabase'
+import { clearSessionProfile, getSessionProfile, isActive, isAdmin, isOfficialOrAdmin, refreshSessionProfile } from '../lib/supabase'
 
 interface AuthContextType {
-  user: User | null
+  user: { id: string } | null
   profile: Perfil | null
   loading: boolean
   isAdmin: boolean
@@ -17,38 +16,36 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<{ id: string } | null>(null)
   const [profile, setProfile] = useState<Perfil | null>(null)
   const [loading, setLoading] = useState(true)
 
   const refreshProfile = async () => {
     try {
-      const currentUser = await getCurrentUser()
-      setUser(currentUser)
-      if (currentUser) {
-        const prof = await getCurrentProfile()
-        setProfile(prof)
+      const refreshed = await refreshSessionProfile()
+      if (refreshed) {
+        setProfile(refreshed)
+        setUser({ id: refreshed.id })
       } else {
         setProfile(null)
+        setUser(null)
       }
-    } catch {
-      setUser(null)
-      setProfile(null)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    const localProfile = getSessionProfile()
+    if (localProfile) {
+      setProfile(localProfile)
+      setUser({ id: localProfile.id })
+    }
     refreshProfile()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      refreshProfile()
-    })
-    return () => subscription.unsubscribe()
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    clearSessionProfile()
     setUser(null)
     setProfile(null)
   }

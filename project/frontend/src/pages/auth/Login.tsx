@@ -1,7 +1,7 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { loginWithPassword } from '../../lib/supabase'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -10,7 +10,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
 
   if (user && profile?.estado === 'activo') {
     return <Navigate to="/dashboard" replace />
@@ -21,11 +21,15 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      const profileData = await loginWithPassword(email, password)
+      if (!profileData) {
+        setError('Credenciales invalidas')
+        return
+      }
+      await refreshProfile()
       navigate((location.state as any)?.from?.pathname || '/dashboard', { replace: true })
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión')
+      setError(err.message || 'Error al iniciar sesion')
     } finally {
       setLoading(false)
     }
@@ -34,7 +38,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6">🚒 Cuartel de Bomberos</h1>
+        <h1 className="text-2xl font-bold text-center mb-6">Cuartel de Bomberos</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
@@ -42,17 +46,17 @@ export default function Login() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Contraseña</label>
+            <label className="block text-sm font-medium mb-1">Contrasena</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               required
             />
           </div>
@@ -60,7 +64,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg disabled:opacity-50"
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>

@@ -2,6 +2,21 @@
 -- Initial data for catalogs and materials
 
 -- ============================================
+-- USUARIO ADMIN INICIAL
+-- email: admin@bomberos.local
+-- password: admin123
+-- ============================================
+INSERT INTO public.perfiles (
+  nombre, apellido, email, password_hash, rol, estado,
+  es_conductor_habilitado, es_oficial_autorizante
+) VALUES (
+  'Admin', 'Sistema', 'admin@bomberos.local',
+  crypt('admin123', gen_salt('bf')),
+  'admin', 'activo', true, true
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- ============================================
 -- MATERIALES INICIALES
 -- ============================================
 

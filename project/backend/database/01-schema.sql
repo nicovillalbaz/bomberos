@@ -1,11 +1,14 @@
-﻿-- Main schema for Bomberos system
+﻿-- Main schema for Bomberos system (public-only auth)
 -- Depends on: 00-enums.sql
 
--- 1) USERS / PROFILES
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE public.perfiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT NOT NULL,
     apellido TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
     telefono TEXT,
     codigo_interno TEXT,
     rol rol_usuario NOT NULL DEFAULT 'bombero',
@@ -17,7 +20,6 @@ CREATE TABLE public.perfiles (
     created_by UUID REFERENCES public.perfiles(id)
 );
 
--- 2) VEHICLES
 CREATE TABLE public.vehiculos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT NOT NULL UNIQUE,
@@ -34,7 +36,6 @@ CREATE TABLE public.vehiculos (
     created_by UUID REFERENCES public.perfiles(id)
 );
 
--- 3) DEPARTURES
 CREATE TABLE public.salidas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     vehiculo_id UUID NOT NULL REFERENCES public.vehiculos(id),
@@ -56,21 +57,12 @@ CREATE TABLE public.salidas (
     usuario_carga_id UUID NOT NULL REFERENCES public.perfiles(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_salidas_km_llegada_ge_salida CHECK (
-      km_llegada IS NULL OR km_llegada >= km_salida
-    ),
-    CONSTRAINT chk_salidas_combustible_monto CHECK (
-      (hay_combustible = false) OR (monto_combustible IS NOT NULL AND monto_combustible > 0)
-    ),
-    CONSTRAINT chk_salidas_conductor_source CHECK (
-      (conductor_id IS NOT NULL) OR (conductor_rentado_nombre IS NOT NULL)
-    ),
-    CONSTRAINT chk_salidas_motivo_otro CHECK (
-      lower(motivo) <> 'otro' OR motivo_descripcion IS NOT NULL
-    )
+    CONSTRAINT chk_salidas_km_llegada_ge_salida CHECK (km_llegada IS NULL OR km_llegada >= km_salida),
+    CONSTRAINT chk_salidas_combustible_monto CHECK ((hay_combustible = false) OR (monto_combustible IS NOT NULL AND monto_combustible > 0)),
+    CONSTRAINT chk_salidas_conductor_source CHECK ((conductor_id IS NOT NULL) OR (conductor_rentado_nombre IS NOT NULL)),
+    CONSTRAINT chk_salidas_motivo_otro CHECK (lower(motivo) <> 'otro' OR motivo_descripcion IS NOT NULL)
 );
 
--- 4) MATERIALS
 CREATE TABLE public.materiales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT NOT NULL UNIQUE,
@@ -79,7 +71,6 @@ CREATE TABLE public.materiales (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 5) MOBILE INVENTORY
 CREATE TABLE public.inventario_movil (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     movil_id UUID NOT NULL REFERENCES public.vehiculos(id),
@@ -90,7 +81,6 @@ CREATE TABLE public.inventario_movil (
     UNIQUE(movil_id, material_id)
 );
 
--- 6) MOBILE NEWS
 CREATE TABLE public.novedades_movil (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     movil_id UUID NOT NULL REFERENCES public.vehiculos(id),
@@ -105,7 +95,6 @@ CREATE TABLE public.novedades_movil (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 7) SHIFTS
 CREATE TABLE public.guardias (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fecha DATE NOT NULL,
@@ -140,7 +129,6 @@ CREATE TABLE public.asistencia (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 8) COMPANY / DEPOSIT INVENTORY
 CREATE TABLE public.inventario_compania (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     material_id UUID NOT NULL REFERENCES public.materiales(id),
@@ -159,7 +147,6 @@ CREATE TABLE public.inventario_deposito (
     UNIQUE(material_id)
 );
 
--- 9) SERVICES
 CREATE TABLE public.servicios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fecha DATE NOT NULL,
@@ -191,7 +178,6 @@ CREATE TABLE public.servicio_personal (
     es_rentado BOOLEAN NOT NULL DEFAULT false
 );
 
--- 10) GLOBAL NEWS
 CREATE TABLE public.novedades_global (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fecha DATE NOT NULL,
@@ -211,7 +197,6 @@ CREATE TABLE public.novedades_global (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 11) CATALOGS
 CREATE TABLE public.tipo_servicio (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     codigo TEXT NOT NULL UNIQUE,
@@ -246,7 +231,6 @@ CREATE TABLE public.tipo_novedad_movil (
     activo BOOLEAN NOT NULL DEFAULT true
 );
 
--- 12) HISTORY
 CREATE TABLE public.salidas_historial (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     salida_id UUID NOT NULL REFERENCES public.salidas(id) ON DELETE CASCADE,

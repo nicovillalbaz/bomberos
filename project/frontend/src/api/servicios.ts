@@ -1,8 +1,8 @@
-﻿import { supabase } from '../lib/supabase'
+﻿import { getSessionUserId, supabase } from '../lib/supabase'
 import type { Servicio, ServicioCreate, ServicioPersonalCreate } from '../types'
 
 export const getServicios = async (estado?: string) => {
-  let query = supabase
+  let query = (supabase as any)
     .from('servicios')
     .select('*, movil:vehiculos(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*), personal:servicio_personal(*, persona:perfiles(*))')
     .order('fecha', { ascending: false })
@@ -12,20 +12,18 @@ export const getServicios = async (estado?: string) => {
   return data as Servicio[]
 }
 
-export const getServicioById = async (id: string) => {
-  const { data, error } = await supabase
+export const createServicio = async (servicio: ServicioCreate) => {
+  const actorId = getSessionUserId()
+  if (!actorId) throw new Error('No hay sesion activa')
+
+  const { personal, ...servicioData } = servicio
+  const { data, error } = await (supabase as any)
     .from('servicios')
-    .select('*, movil:vehiculos(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*), personal:servicio_personal(*, persona:perfiles(*))')
-    .eq('id', id)
+    .insert([{ ...servicioData, usuario_carga_id: actorId }])
+    .select()
     .single()
   if (error) throw error
-  return data as Servicio
-}
 
-export const createServicio = async (servicio: ServicioCreate) => {
-  const { personal, ...servicioData } = servicio
-  const { data, error } = await (supabase as any).from('servicios').insert([servicioData]).select().single()
-  if (error) throw error
   if (personal && personal.length > 0) {
     const personalData = personal.map((p: ServicioPersonalCreate) => ({ servicio_id: (data as any).id, ...p }))
     await (supabase as any).from('servicio_personal').insert(personalData)
@@ -52,4 +50,3 @@ export const getSubtiposServicio = async (tipoServicioId?: string) => {
   if (error) throw error
   return data
 }
-
