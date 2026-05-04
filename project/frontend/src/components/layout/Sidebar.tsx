@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+﻿import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import type { RolUsuario } from '../../types'
 
@@ -17,16 +17,15 @@ const navItems = [
 export default function Sidebar() {
   const { profile } = useAuth()
   const rol = profile?.rol as RolUsuario | undefined
-
-  const filteredItems = navItems.filter(item => rol && item.roles.includes(rol))
+  const filteredItems = navItems.filter((item) => rol && item.roles.includes(rol))
 
   return (
-    <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
+    <aside className="w-64 bg-gray-900 text-white min-h-screen flex-col hidden md:flex">
       <div className="p-4 border-b border-gray-700">
         <h1 className="text-xl font-bold">🚒 Bomberos</h1>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {filteredItems.map(item => (
+        {filteredItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

@@ -183,7 +183,7 @@ export interface Database {
       estado_usuario: 'activo' | 'inactivo'
       tipo_vehiculo: 'camion' | 'ambulancia' | 'unidad_apoyo' | 'otro'
       estado_vehiculo: 'disponible' | 'en_salida' | 'en_mantenimiento' | 'fuera_servicio'
-      tipo_guardia: 'voluntaria' | 'rentada'
+      tipo_guardia: 'voluntaria' | 'rentada' | 'especial'
       tipo_accion: 'ingreso' | 'salida' | 'asistencia_guardia' | 'accion_realizada'
       origen_novedad: 'manual' | 'automatico'
       estado_servicio: 'borrador' | 'completo'

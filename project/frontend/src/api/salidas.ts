@@ -12,6 +12,18 @@ export const getSalidas = async (vehiculoId?: string) => {
   return data as Salida[]
 }
 
+export const getSalidasByDateRange = async (desde?: string, hasta?: string) => {
+  let query = (supabase as any)
+    .from('salidas')
+    .select('*, vehiculo:vehiculos(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*)')
+    .order('fecha_salida', { ascending: false })
+  if (desde) query = query.gte('fecha_salida', desde)
+  if (hasta) query = query.lte('fecha_salida', `${hasta}T23:59:59`)
+  const { data, error } = await query
+  if (error) throw error
+  return data as Salida[]
+}
+
 export const getLastSalidaByVehiculo = async (vehiculoId: string) => {
   const { data, error } = await (supabase as any)
     .from('salidas')
@@ -47,4 +59,10 @@ export const completeSalida = async (id: string, km_llegada: number) => {
     .single()
   if (error) throw error
   return data
+}
+
+export const updateSalida = async (id: string, updates: Partial<Salida>) => {
+  const { data, error } = await (supabase as any).from('salidas').update(updates).eq('id', id).select().single()
+  if (error) throw error
+  return data as Salida
 }

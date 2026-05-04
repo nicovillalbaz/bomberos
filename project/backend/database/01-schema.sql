@@ -158,6 +158,7 @@ CREATE TABLE public.servicios (
     descripcion TEXT,
     movil_id UUID REFERENCES public.vehiculos(id),
     salida_id UUID REFERENCES public.salidas(id),
+    a_cargo_id UUID REFERENCES public.perfiles(id),
     conductor_id UUID REFERENCES public.perfiles(id),
     conductor_rentado_nombre TEXT,
     conductor_rentado_codigo TEXT,
@@ -175,7 +176,8 @@ CREATE TABLE public.servicio_personal (
     persona_id UUID REFERENCES public.perfiles(id),
     persona_nombre TEXT,
     persona_codigo TEXT,
-    es_rentado BOOLEAN NOT NULL DEFAULT false
+    es_rentado BOOLEAN NOT NULL DEFAULT false,
+    rol_en_servicio TEXT NOT NULL DEFAULT 'miembro'
 );
 
 CREATE TABLE public.novedades_global (

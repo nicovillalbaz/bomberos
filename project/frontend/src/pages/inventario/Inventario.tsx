@@ -54,15 +54,15 @@ function InventarioMovilView() {
   return (
     <div className="space-y-4">
       <select value={selected} onChange={(e) => loadInventario(e.target.value)} className="px-3 py-2 border rounded-lg">
-        <option value="">Seleccionar movil</option>
+        <option value="">Seleccionar móvil</option>
         {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
       </select>
 
       {selected && (
         <div className="bg-white rounded-lg shadow overflow-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[540px]">
             <thead className="bg-gray-50">
-              <tr><th className="p-2 text-left">Material</th><th>Categoria</th><th>Cantidad</th><th></th></tr>
+              <tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Cantidad</th><th></th></tr>
             </thead>
             <tbody>
               {materiales.map((m) => (
@@ -96,8 +96,8 @@ function InventarioGlobalView() {
   useEffect(() => { getInventarioGlobal().then((v) => setData(v ?? [])) }, [])
   return (
     <div className="bg-white rounded-lg shadow overflow-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoria</th><th>Moviles</th><th>Compania</th><th>Deposito</th><th>Total</th></tr></thead>
+      <table className="w-full text-sm min-w-[700px]">
+        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Móviles</th><th>Compañía</th><th>Depósito</th><th>Total</th></tr></thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i} className="border-t">
@@ -118,24 +118,24 @@ function InventarioGlobalView() {
 function InventarioCompaniaView() {
   const [data, setData] = useState<Array<Record<string, unknown>>>([])
   useEffect(() => { getInventarioCompania().then((v) => setData(v ?? [])) }, [])
-  return <div className="bg-white rounded-lg shadow p-4">Inventario Compania: {data.length} items</div>
+  return <div className="bg-white rounded-lg shadow p-4">Inventario compañía: {data.length} ítems</div>
 }
 
 function InventarioDepositoView() {
   const [data, setData] = useState<Array<Record<string, unknown>>>([])
   useEffect(() => { getInventarioDeposito().then((v) => setData(v ?? [])) }, [])
-  return <div className="bg-white rounded-lg shadow p-4">Inventario Deposito: {data.length} items</div>
+  return <div className="bg-white rounded-lg shadow p-4">Inventario depósito: {data.length} ítems</div>
 }
 
 export default function Inventario() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Inventario</h1>
-      <div className="flex gap-4 border-b">
-        <NavLink to="/inventario/movil" className={({ isActive }) => `pb-2 ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Movil</NavLink>
-        <NavLink to="/inventario/global" className={({ isActive }) => `pb-2 ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Global</NavLink>
-        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compania</NavLink>
-        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Deposito</NavLink>
+      <div className="flex gap-4 border-b overflow-x-auto">
+        <NavLink to="/inventario/movil" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Móvil</NavLink>
+        <NavLink to="/inventario/global" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Global</NavLink>
+        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compañía</NavLink>
+        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Depósito</NavLink>
       </div>
       <Routes>
         <Route path="movil" element={<InventarioMovilView />} />

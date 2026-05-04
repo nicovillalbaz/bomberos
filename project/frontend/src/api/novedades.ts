@@ -23,3 +23,30 @@ export const createNovedadManual = async (novedad: { tipo: string; titulo: strin
   if (error) throw error
   return data
 }
+
+export const createNovedadIngresoRetiroCompania = async (accion: 'ingreso' | 'retiro') => {
+  const actorId = getSessionUserId()
+  if (!actorId) throw new Error('No hay sesión activa')
+  const ahora = new Date()
+  const titulo = accion === 'ingreso' ? 'Ingresé en la compañía' : 'Me retiro de la compañía'
+  const descripcion = accion === 'ingreso'
+    ? 'Registro automático de ingreso en la compañía.'
+    : 'Registro automático de retiro de la compañía.'
+
+  const { data, error } = await (supabase as any)
+    .from('novedades_global')
+    .insert([{
+      tipo: 'personal',
+      titulo,
+      descripcion,
+      modulo_origen: 'dashboard',
+      usuario_id: actorId,
+      origen: 'automatico',
+      fecha: ahora.toISOString().split('T')[0],
+      hora: ahora.toTimeString().split(' ')[0],
+    }])
+    .select()
+    .single()
+  if (error) throw error
+  return data as NovedadGlobal
+}

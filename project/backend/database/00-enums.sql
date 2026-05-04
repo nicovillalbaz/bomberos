@@ -14,7 +14,7 @@ CREATE TYPE tipo_vehiculo AS ENUM ('camion', 'ambulancia', 'unidad_apoyo', 'otro
 CREATE TYPE estado_vehiculo AS ENUM ('disponible', 'en_salida', 'en_mantenimiento', 'fuera_servicio');
 
 -- Guard/Shift types
-CREATE TYPE tipo_guardia AS ENUM ('voluntaria', 'rentada');
+CREATE TYPE tipo_guardia AS ENUM ('voluntaria', 'rentada', 'especial');
 
 -- Action types for attendance
 CREATE TYPE tipo_accion AS ENUM ('ingreso', 'salida', 'asistencia_guardia', 'accion_realizada');

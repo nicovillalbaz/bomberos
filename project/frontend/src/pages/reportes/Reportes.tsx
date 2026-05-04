@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { getReporteServicios, getReporteSalidas, getReporteInventarioGlobal, exportToCSV } from '../../api/reportes'
 
 const modulos = [
@@ -57,3 +57,4 @@ export default function Reportes() {
     </div>
   )
 }
+

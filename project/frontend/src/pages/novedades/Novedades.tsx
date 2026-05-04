@@ -26,21 +26,21 @@ export default function Novedades() {
     <div className="space-y-4">
       <div className="flex justify-between">
         <h1 className="text-2xl font-bold">Novedades</h1>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva Novedad</button>
+        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva novedad</button>
       </div>
 
       {showForm && (
         <div className="bg-white p-4 rounded-lg shadow">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input required placeholder="Titulo" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+            <input required placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="w-full px-3 py-2 border rounded-lg">
               <option value="general">General</option>
-              <option value="vehiculo">Vehiculo</option>
+              <option value="vehiculo">Vehículo</option>
               <option value="personal">Personal</option>
               <option value="inventario">Inventario</option>
               <option value="servicio">Servicio</option>
             </select>
-            <textarea required placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+            <textarea required placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>

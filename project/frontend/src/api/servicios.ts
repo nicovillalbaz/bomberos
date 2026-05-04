@@ -4,9 +4,22 @@ import type { Servicio, ServicioCreate, ServicioPersonalCreate } from '../types'
 export const getServicios = async (estado?: string) => {
   let query = (supabase as any)
     .from('servicios')
-    .select('*, movil:vehiculos(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*), personal:servicio_personal(*, persona:perfiles(*))')
+    .select('*, movil:vehiculos(*), a_cargo:perfiles!a_cargo_id(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*), personal:servicio_personal(*, persona:perfiles(*))')
     .order('fecha', { ascending: false })
   if (estado) query = query.eq('estado', estado)
+  const { data, error } = await query
+  if (error) throw error
+  return data as Servicio[]
+}
+
+export const getServiciosByDateRange = async (estado?: string, fechaDesde?: string, fechaHasta?: string) => {
+  let query = (supabase as any)
+    .from('servicios')
+    .select('*, movil:vehiculos(*), a_cargo:perfiles!a_cargo_id(*), conductor:perfiles!conductor_id(*), autorizacion:perfiles!autorizacion_id(*), personal:servicio_personal(*, persona:perfiles(*))')
+    .order('fecha', { ascending: false })
+  if (estado) query = query.eq('estado', estado)
+  if (fechaDesde) query = query.gte('fecha', fechaDesde)
+  if (fechaHasta) query = query.lte('fecha', fechaHasta)
   const { data, error } = await query
   if (error) throw error
   return data as Servicio[]
@@ -49,4 +62,10 @@ export const getSubtiposServicio = async (tipoServicioId?: string) => {
   const { data, error } = await query
   if (error) throw error
   return data
+}
+
+export const getMotivosSalidaServicio = async () => {
+  const { data, error } = await (supabase as any).from('motivo_salida').select('*').eq('activo', true).eq('es_servicio', true).order('nombre')
+  if (error) throw error
+  return data as Array<{ id: string; nombre: string }>
 }

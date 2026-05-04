@@ -2,7 +2,7 @@
 export type EstadoUsuario = 'activo' | 'inactivo'
 export type TipoVehiculo = 'camion' | 'ambulancia' | 'unidad_apoyo' | 'otro'
 export type EstadoVehiculo = 'disponible' | 'en_salida' | 'en_mantenimiento' | 'fuera_servicio'
-export type TipoGuardia = 'voluntaria' | 'rentada'
+export type TipoGuardia = 'voluntaria' | 'rentada' | 'especial'
 export type TipoAccion = 'ingreso' | 'salida' | 'asistencia_guardia' | 'accion_realizada'
 export type OrigenNovedad = 'manual' | 'automatico'
 export type EstadoServicio = 'borrador' | 'completo'
@@ -166,6 +166,7 @@ export interface ServicioPersonal {
   persona_nombre?: string | null
   persona_codigo?: string | null
   es_rentado: boolean
+  rol_en_servicio?: 'a_cargo' | 'conductor' | 'miembro'
   persona?: Perfil
 }
 
@@ -174,6 +175,7 @@ export interface ServicioPersonalCreate {
   persona_nombre?: string | null
   persona_codigo?: string | null
   es_rentado?: boolean
+  rol_en_servicio?: 'a_cargo' | 'conductor' | 'miembro'
 }
 
 export interface Servicio {
@@ -187,6 +189,7 @@ export interface Servicio {
   descripcion?: string | null
   movil_id?: string | null
   salida_id?: string | null
+  a_cargo_id?: string | null
   conductor_id?: string | null
   conductor_rentado_nombre?: string | null
   conductor_rentado_codigo?: string | null
@@ -197,6 +200,7 @@ export interface Servicio {
   created_at: string
   updated_at: string
   movil?: Vehiculo
+  a_cargo?: Perfil
   conductor?: Perfil
   autorizacion?: Perfil
   personal?: ServicioPersonal[]
@@ -212,6 +216,7 @@ export interface ServicioCreate {
   descripcion?: string | null
   movil_id?: string | null
   salida_id?: string | null
+  a_cargo_id?: string | null
   conductor_id?: string | null
   conductor_rentado_nombre?: string | null
   conductor_rentado_codigo?: string | null

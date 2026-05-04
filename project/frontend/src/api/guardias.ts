@@ -1,12 +1,14 @@
 ﻿import { getSessionUserId, supabase } from '../lib/supabase'
 import type { Asistencia, AsistenciaCreate, Guardia, GuardiaCreate } from '../types'
 
-export const getGuardias = async (fecha?: string) => {
+export const getGuardias = async (fecha?: string, fechaDesde?: string, fechaHasta?: string) => {
   let query = (supabase as any)
     .from('guardias')
     .select('*, a_cargo:perfiles!a_cargo_id(*), conductor:perfiles!conductor_id(*), miembros:guardia_miembros(miembro:perfiles(*))')
     .order('fecha', { ascending: false })
   if (fecha) query = query.eq('fecha', fecha)
+  if (fechaDesde) query = query.gte('fecha', fechaDesde)
+  if (fechaHasta) query = query.lte('fecha', fechaHasta)
   const { data, error } = await query
   if (error) throw error
   return data as (Guardia & { miembros: { miembro: any }[] })[]
@@ -29,6 +31,15 @@ export const createGuardia = async (guardia: GuardiaCreate) => {
     await (supabase as any).from('guardia_miembros').insert(miembrosData)
   }
   return data
+}
+
+export const createMultipleGuardias = async (guardias: GuardiaCreate[]) => {
+  const created: Guardia[] = []
+  for (const guardia of guardias) {
+    const data = await createGuardia(guardia)
+    created.push(data as Guardia)
+  }
+  return created
 }
 
 export const markAsistencia = async (asistencia: AsistenciaCreate) => {
