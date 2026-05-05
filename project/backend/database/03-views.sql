@@ -127,3 +127,39 @@ LEFT JOIN public.perfiles p ON p.id = s.conductor_id
 LEFT JOIN public.perfiles aut ON aut.id = s.autorizacion_id
 LEFT JOIN public.perfiles car ON car.id = s.usuario_carga_id
 ORDER BY s.fecha DESC;
+
+CREATE OR REPLACE VIEW public.v_inventario_movimientos AS
+SELECT
+  im.id,
+  im.material_id,
+  m.nombre AS material,
+  m.categoria,
+  im.cantidad,
+  im.origen_tipo,
+  im.origen_ref,
+  CASE
+    WHEN im.origen_tipo = 'movil' THEN (SELECT v.nombre FROM public.vehiculos v WHERE v.id = im.origen_ref)
+    WHEN im.origen_tipo = 'deposito' THEN 'Depósito'
+    WHEN im.origen_tipo = 'compania' THEN 'Compañía'
+    WHEN im.origen_tipo = 'externo' THEN 'Externo'
+    ELSE NULL
+  END AS origen_nombre,
+  im.destino_tipo,
+  im.destino_ref,
+  CASE
+    WHEN im.destino_tipo = 'movil' THEN (SELECT v.nombre FROM public.vehiculos v WHERE v.id = im.destino_ref)
+    WHEN im.destino_tipo = 'deposito' THEN 'Depósito'
+    WHEN im.destino_tipo = 'compania' THEN 'Compañía'
+    WHEN im.destino_tipo = 'consumo' THEN 'Consumo'
+    WHEN im.destino_tipo = 'baja' THEN 'Baja'
+    ELSE NULL
+  END AS destino_nombre,
+  im.motivo,
+  im.observacion,
+  im.usuario_id,
+  p.nombre || ' ' || p.apellido AS usuario,
+  im.created_at
+FROM public.inventario_movimientos im
+JOIN public.materiales m ON m.id = im.material_id
+LEFT JOIN public.perfiles p ON p.id = im.usuario_id
+ORDER BY im.created_at DESC;

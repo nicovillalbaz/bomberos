@@ -229,3 +229,103 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_vehicle_km_on_arrival AFTER UPDATE ON public.salidas FOR EACH ROW EXECUTE FUNCTION public.update_vehicle_km();
+
+CREATE OR REPLACE FUNCTION public.transferir_inventario(
+  p_material_id UUID,
+  p_cantidad INTEGER,
+  p_origen_tipo TEXT,
+  p_origen_ref UUID,
+  p_destino_tipo TEXT,
+  p_destino_ref UUID,
+  p_motivo TEXT,
+  p_observacion TEXT,
+  p_usuario_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_movimiento_id UUID;
+  v_stock_origen INTEGER := 0;
+BEGIN
+  IF p_cantidad IS NULL OR p_cantidad <= 0 THEN
+    RAISE EXCEPTION 'La cantidad debe ser mayor a cero';
+  END IF;
+
+  IF p_origen_tipo NOT IN ('deposito', 'compania', 'movil', 'externo') THEN
+    RAISE EXCEPTION 'origen_tipo invalido';
+  END IF;
+
+  IF p_destino_tipo NOT IN ('deposito', 'compania', 'movil', 'consumo', 'baja') THEN
+    RAISE EXCEPTION 'destino_tipo invalido';
+  END IF;
+
+  IF p_origen_tipo = 'movil' AND p_origen_ref IS NULL THEN
+    RAISE EXCEPTION 'origen_ref es obligatorio para origen movil';
+  END IF;
+
+  IF p_destino_tipo = 'movil' AND p_destino_ref IS NULL THEN
+    RAISE EXCEPTION 'destino_ref es obligatorio para destino movil';
+  END IF;
+
+  IF p_origen_tipo <> 'externo' THEN
+    IF p_origen_tipo = 'deposito' THEN
+      SELECT cantidad INTO v_stock_origen FROM public.inventario_deposito WHERE material_id = p_material_id;
+    ELSIF p_origen_tipo = 'compania' THEN
+      SELECT cantidad INTO v_stock_origen FROM public.inventario_compania WHERE material_id = p_material_id;
+    ELSIF p_origen_tipo = 'movil' THEN
+      SELECT cantidad INTO v_stock_origen FROM public.inventario_movil WHERE material_id = p_material_id AND movil_id = p_origen_ref;
+    END IF;
+
+    v_stock_origen := COALESCE(v_stock_origen, 0);
+    IF v_stock_origen < p_cantidad THEN
+      RAISE EXCEPTION 'Stock insuficiente en origen';
+    END IF;
+  END IF;
+
+  IF p_origen_tipo = 'deposito' THEN
+    UPDATE public.inventario_deposito
+      SET cantidad = cantidad - p_cantidad, updated_by = p_usuario_id
+      WHERE material_id = p_material_id;
+  ELSIF p_origen_tipo = 'compania' THEN
+    UPDATE public.inventario_compania
+      SET cantidad = cantidad - p_cantidad, updated_by = p_usuario_id
+      WHERE material_id = p_material_id;
+  ELSIF p_origen_tipo = 'movil' THEN
+    UPDATE public.inventario_movil
+      SET cantidad = cantidad - p_cantidad, updated_by = p_usuario_id
+      WHERE material_id = p_material_id AND movil_id = p_origen_ref;
+  END IF;
+
+  IF p_destino_tipo = 'deposito' THEN
+    INSERT INTO public.inventario_deposito (material_id, cantidad, updated_by)
+    VALUES (p_material_id, p_cantidad, p_usuario_id)
+    ON CONFLICT (material_id) DO UPDATE
+      SET cantidad = public.inventario_deposito.cantidad + EXCLUDED.cantidad,
+          updated_by = EXCLUDED.updated_by;
+  ELSIF p_destino_tipo = 'compania' THEN
+    INSERT INTO public.inventario_compania (material_id, cantidad, updated_by)
+    VALUES (p_material_id, p_cantidad, p_usuario_id)
+    ON CONFLICT (material_id) DO UPDATE
+      SET cantidad = public.inventario_compania.cantidad + EXCLUDED.cantidad,
+          updated_by = EXCLUDED.updated_by;
+  ELSIF p_destino_tipo = 'movil' THEN
+    INSERT INTO public.inventario_movil (movil_id, material_id, cantidad, updated_by)
+    VALUES (p_destino_ref, p_material_id, p_cantidad, p_usuario_id)
+    ON CONFLICT (movil_id, material_id) DO UPDATE
+      SET cantidad = public.inventario_movil.cantidad + EXCLUDED.cantidad,
+          updated_by = EXCLUDED.updated_by;
+  END IF;
+
+  INSERT INTO public.inventario_movimientos (
+    material_id, cantidad, origen_tipo, origen_ref, destino_tipo, destino_ref,
+    motivo, observacion, usuario_id
+  ) VALUES (
+    p_material_id, p_cantidad, p_origen_tipo, p_origen_ref, p_destino_tipo, p_destino_ref,
+    p_motivo, p_observacion, p_usuario_id
+  )
+  RETURNING id INTO v_movimiento_id;
+
+  RETURN v_movimiento_id;
+END;
+$$;

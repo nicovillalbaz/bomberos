@@ -147,6 +147,20 @@ CREATE TABLE public.inventario_deposito (
     UNIQUE(material_id)
 );
 
+CREATE TABLE public.inventario_movimientos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    material_id UUID NOT NULL REFERENCES public.materiales(id),
+    cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+    origen_tipo TEXT NOT NULL CHECK (origen_tipo IN ('deposito', 'compania', 'movil', 'externo')),
+    origen_ref UUID,
+    destino_tipo TEXT NOT NULL CHECK (destino_tipo IN ('deposito', 'compania', 'movil', 'consumo', 'baja')),
+    destino_ref UUID,
+    motivo TEXT,
+    observacion TEXT,
+    usuario_id UUID NOT NULL REFERENCES public.perfiles(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE public.servicios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fecha DATE NOT NULL,

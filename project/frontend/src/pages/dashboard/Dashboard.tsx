@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Guardia, NovedadGlobal, Vehiculo } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { createNovedadIngresoRetiroCompania } from '../../api/novedades'
+import { useAuth } from '../../hooks/useAuth'
 
 const quickLinks = [
   { to: '/salidas', label: 'Salidas', icon: '📤' },
@@ -12,14 +13,23 @@ const quickLinks = [
 ]
 
 export default function Dashboard() {
+  const { profile } = useAuth()
   const [novedades, setNovedades] = useState<NovedadGlobal[]>([])
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [guardiaHoy, setGuardiaHoy] = useState<Guardia[]>([])
   const [loading, setLoading] = useState(true)
+  const [enCompania, setEnCompania] = useState(false)
+  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (profile?.id) {
+      loadPresenceState(profile.id)
+    }
+  }, [profile?.id])
 
   const loadData = async () => {
     try {
@@ -39,8 +49,29 @@ export default function Dashboard() {
     }
   }
 
+  const loadPresenceState = async (usuarioId: string) => {
+    const { data } = await (supabase as any)
+      .from('novedades_global')
+      .select('titulo, created_at')
+      .eq('usuario_id', usuarioId)
+      .eq('tipo', 'personal')
+      .eq('modulo_origen', 'dashboard')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!data?.titulo) {
+      setEnCompania(false)
+      return
+    }
+    setEnCompania(data.titulo.toLowerCase().includes('ingresé'))
+  }
+
   const registrar = async (accion: 'ingreso' | 'retiro') => {
     await createNovedadIngresoRetiroCompania(accion)
+    setEnCompania(accion === 'ingreso')
+    setFeedback(accion === 'ingreso' ? 'Ingreso registrado correctamente' : 'Retiro registrado correctamente')
+    setTimeout(() => setFeedback(''), 2200)
     await loadData()
   }
 
@@ -59,9 +90,17 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button onClick={() => registrar('ingreso')} className="px-4 py-3 rounded-xl bg-green-600 text-white font-medium">Ingresé en la compañía</button>
-        <button onClick={() => registrar('retiro')} className="px-4 py-3 rounded-xl bg-red-600 text-white font-medium">Me retiro de la compañía</button>
+      <div className="space-y-2">
+        {!enCompania ? (
+          <button onClick={() => registrar('ingreso')} className="w-full sm:w-auto px-4 py-3 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors">Ingresé en la compañía</button>
+        ) : (
+          <button onClick={() => registrar('retiro')} className="w-full sm:w-auto px-4 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors">Me retiro de la compañía</button>
+        )}
+        {feedback && (
+          <div className="inline-block px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm animate-pulse">
+            {feedback}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

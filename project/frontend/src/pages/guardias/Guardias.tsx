@@ -58,6 +58,14 @@ export default function Guardias() {
 
   const addFecha = () => setForm((prev) => ({ ...prev, fechas: [...prev.fechas, ''] }))
   const removeFecha = (index: number) => setForm((prev) => ({ ...prev, fechas: prev.fechas.filter((_, i) => i !== index) }))
+  const toggleMiembro = (miembroId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      miembros: prev.miembros.includes(miembroId)
+        ? prev.miembros.filter((id) => id !== miembroId)
+        : [...prev.miembros, miembroId],
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -167,10 +175,20 @@ export default function Guardias() {
             </select>
 
             <div className="sm:col-span-2">
-              <label className="text-sm">Miembros</label>
-              <select multiple value={form.miembros} onChange={(e) => setForm({ ...form, miembros: Array.from(e.target.selectedOptions, (o) => o.value) })} className="w-full px-3 py-2 border rounded-lg h-36">
-                {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
-              </select>
+              <label className="text-sm font-medium">Miembros</label>
+              <div className="mt-2 border rounded-lg p-3 max-h-56 overflow-y-auto space-y-2">
+                {perfiles.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.miembros.includes(p.id)}
+                      onChange={() => toggleMiembro(p.id)}
+                    />
+                    <span>{p.nombre} {p.apellido}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Seleccionados: {form.miembros.length}</p>
             </div>
 
             {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}

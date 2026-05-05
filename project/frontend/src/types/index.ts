@@ -240,6 +240,34 @@ export interface InventarioMovil {
   material?: Material
 }
 
+export interface InventarioUbicacionItem {
+  id?: string
+  material_id: string
+  cantidad: number
+  material?: Material
+}
+
+export type InventarioOrigenTipo = 'deposito' | 'compania' | 'movil' | 'externo'
+export type InventarioDestinoTipo = 'deposito' | 'compania' | 'movil' | 'consumo' | 'baja'
+
+export interface InventarioMovimiento {
+  id: string
+  material_id: string
+  cantidad: number
+  origen_tipo: InventarioOrigenTipo
+  origen_ref?: string | null
+  destino_tipo: InventarioDestinoTipo
+  destino_ref?: string | null
+  motivo?: string | null
+  observacion?: string | null
+  usuario_id: string
+  created_at: string
+  material?: Material
+  usuario?: Perfil
+  origen_nombre?: string | null
+  destino_nombre?: string | null
+}
+
 export interface NovedadGlobal {
   id: string
   fecha: string
