@@ -7,6 +7,8 @@ const mobileLinks = [
   { to: '/salidas', label: 'Salidas', icon: '📤' },
   { to: '/guardias', label: 'Guardias', icon: '📋' },
   { to: '/servicios', label: 'Servicios', icon: '🚨' },
+  { to: '/citaciones', label: 'Citaciones', icon: '🗒️' },
+  { to: '/practicas', label: 'Prácticas', icon: '🏋️' },
   { to: '/novedades', label: 'Novedades', icon: '📰' },
 ]
 
@@ -20,7 +22,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 grid grid-cols-5 z-20">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 grid grid-cols-7 text-[11px] z-20">
           {mobileLinks.map((item) => (
             <NavLink
               key={item.to}

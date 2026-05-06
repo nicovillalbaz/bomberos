@@ -1,18 +1,81 @@
-﻿import { useEffect, useState } from 'react'
-import type { NovedadGlobal } from '../../types'
+import { useEffect, useState } from 'react'
+import type { NovedadGlobal, Servicio } from '../../types'
 import { createNovedadManual, getNovedades } from '../../api/novedades'
+import { getServicioById } from '../../api/servicios'
+
+const getActor = (n: NovedadGlobal) => `${n.usuario?.nombre ?? ''} ${n.usuario?.apellido ?? ''}`.trim() || 'Un voluntario'
+
+type ServicioResumen = {
+  id: string
+  participantes: string
+  tipo: string
+  lugar?: string | null
+  movil?: string | null
+}
 
 export default function Novedades() {
   const [novedades, setNovedades] = useState<NovedadGlobal[]>([])
+  const [serviceCtx, setServiceCtx] = useState<Record<string, ServicioResumen>>({})
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ tipo: 'general', titulo: '', descripcion: '', modulo_origen: 'manual' })
 
   const load = async () => {
-    const data = await getNovedades(100)
+    const data = await getNovedades(120)
     setNovedades(data)
+
+    const eventoIds = Array.from(new Set(
+      data
+        .filter((n) => n.entidad_relacionada === 'servicio' && n.entidad_id)
+        .map((n) => n.entidad_id as string),
+    ))
+
+    if (eventoIds.length === 0) {
+      setServiceCtx({})
+      return
+    }
+
+    const eventos = await Promise.all(eventoIds.map((id) => getServicioById(id).catch(() => null)))
+    const next: Record<string, ServicioResumen> = {}
+    eventos.forEach((s) => {
+      if (!s) return
+      const participantes = (s.personal || [])
+        .map((p) => `${p.persona?.nombre ?? ''} ${p.persona?.apellido ?? ''}`.trim())
+        .filter(Boolean)
+        .join(', ')
+      next[s.id] = {
+        id: s.id,
+        participantes: participantes || 'Sin participantes cargados',
+        tipo: s.tipo,
+        lugar: s.lugar ?? undefined,
+        movil: s.movil?.nombre ?? undefined,
+      }
+    })
+    setServiceCtx(next)
   }
 
   useEffect(() => { load() }, [])
+
+  const getResumen = (n: NovedadGlobal) => {
+    const actor = getActor(n)
+    const detalleServicio = n.entidad_id ? serviceCtx[n.entidad_id] : undefined
+    if (n.modulo_origen === 'salidas' || n.tipo === 'salida_movil') {
+      return `${actor} registró salida de móvil. ${n.descripcion}`
+    }
+    if (n.entidad_relacionada === 'servicio' && detalleServicio) {
+      const base = `${actor} creó evento de ${detalleServicio.tipo}.`
+      const lugar = detalleServicio.lugar ? ` Lugar: ${detalleServicio.lugar}.` : ''
+      const movil = detalleServicio.movil ? ` Móvil: ${detalleServicio.movil}.` : ''
+      const participantes = ` Participantes: ${detalleServicio.participantes}.`
+      return `${base}${lugar}${movil}${participantes}`
+    }
+    if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
+      return n.descripcion
+    }
+    if (n.entidad_id && n.modulo_origen === 'inventario') {
+      return `${actor} actualizó inventario. ${n.descripcion}`
+    }
+    return n.descripcion
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,8 +119,10 @@ export default function Novedades() {
               <h3 className="font-semibold">{n.titulo}</h3>
               <span className={`text-xs px-2 py-1 rounded ${n.origen === 'automatico' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}`}>{n.origen}</span>
             </div>
-            <p className="text-sm text-gray-600 mt-1">{n.descripcion}</p>
-            <p className="text-xs text-gray-400 mt-2">{new Date(n.created_at).toLocaleString()} - {n.usuario?.nombre} {n.usuario?.apellido}</p>
+            <p className="text-sm text-gray-600 mt-1">{getResumen(n)}</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {new Date(n.created_at).toLocaleString()} - {getActor(n)}
+            </p>
           </div>
         ))}
       </div>

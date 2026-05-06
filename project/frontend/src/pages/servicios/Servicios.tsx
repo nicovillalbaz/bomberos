@@ -14,6 +14,7 @@ export default function Servicios() {
   const [motivos, setMotivos] = useState<Array<{ id: string; nombre: string }>>([])
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  const [miembroSearch, setMiembroSearch] = useState('')
   const [form, setForm] = useState({
     fecha: '',
     tipo: '',
@@ -25,6 +26,11 @@ export default function Servicios() {
     miembros: [] as string[],
     estado: 'borrador' as 'borrador' | 'completo',
   })
+
+  const perfilesFiltrados = useMemo(() => {
+    const needle = miembroSearch.toLowerCase()
+    return perfiles.filter((p) => `${p.nombre} ${p.apellido}`.toLowerCase().includes(needle))
+  }, [perfiles, miembroSearch])
 
   const load = async () => {
     const data = await getServiciosByDateRange(tab, fechaDesde || undefined, fechaHasta || undefined)
@@ -41,9 +47,22 @@ export default function Servicios() {
   useEffect(() => { load() }, [tab])
   useEffect(() => { loadAux() }, [])
 
+  const toggleMiembro = (miembroId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      miembros: prev.miembros.includes(miembroId)
+        ? prev.miembros.filter((id) => id !== miembroId)
+        : [...prev.miembros, miembroId],
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const personal: ServicioPersonalCreate[] = form.miembros.map((id) => ({ persona_id: id, es_rentado: false, rol_en_servicio: 'miembro' as const }))
+    const personal: ServicioPersonalCreate[] = form.miembros.map((id) => ({
+      persona_id: id,
+      es_rentado: false,
+      rol_en_servicio: 'miembro' as const,
+    }))
     if (form.a_cargo_id) personal.push({ persona_id: form.a_cargo_id, es_rentado: false, rol_en_servicio: 'a_cargo' as const })
     if (form.conductor_id) personal.push({ persona_id: form.conductor_id, es_rentado: false, rol_en_servicio: 'conductor' as const })
 
@@ -55,11 +74,15 @@ export default function Servicios() {
       conductor_id: form.conductor_id || null,
     })
     setShowForm(false)
+    setMiembroSearch('')
     setForm({ fecha: '', tipo: '', lugar: '', descripcion: '', movil_id: '', a_cargo_id: '', conductor_id: '', miembros: [], estado: 'borrador' })
     load()
   }
 
-  const handleComplete = async (id: string) => { await updateServicio(id, { estado: 'completo' }); load() }
+  const handleComplete = async (id: string) => {
+    await updateServicio(id, { estado: 'completo' })
+    load()
+  }
 
   const resumen = useMemo(() => {
     const grouped = servicios.reduce<Record<string, number>>((acc, s) => {
@@ -91,7 +114,13 @@ export default function Servicios() {
 
       <div className="flex gap-4">
         {(['borrador', 'completo'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg ${tab === t ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}>{t === 'borrador' ? 'Borradores' : 'Completos'}</button>
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-lg ${tab === t ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}
+          >
+            {t === 'borrador' ? 'Borradores' : 'Completos'}
+          </button>
         ))}
       </div>
 
@@ -105,21 +134,47 @@ export default function Servicios() {
             </select>
             <input placeholder="Lugar" value={form.lugar} onChange={(e) => setForm({ ...form, lugar: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <select value={form.movil_id} onChange={(e) => setForm({ ...form, movil_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Sin vehículo</option>{vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+              <option value="">Sin vehículo</option>
+              {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
             </select>
             <select value={form.a_cargo_id} onChange={(e) => setForm({ ...form, a_cargo_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">A cargo</option>{perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
+              <option value="">A cargo</option>
+              {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
             </select>
             <select value={form.conductor_id} onChange={(e) => setForm({ ...form, conductor_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Conductor</option>{perfiles.filter((p) => p.es_conductor_habilitado).map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
+              <option value="">Conductor</option>
+              {perfiles.filter((p) => p.es_conductor_habilitado).map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
             </select>
             <div className="sm:col-span-2">
-              <label className="text-sm">Miembros</label>
-              <select multiple value={form.miembros} onChange={(e) => setForm({ ...form, miembros: Array.from(e.target.selectedOptions, (o) => o.value) })} className="w-full px-3 py-2 border rounded-lg h-36">
-                {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
-              </select>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                <label className="text-sm font-medium">Miembros</label>
+                <input
+                  placeholder="Buscar miembro"
+                  value={miembroSearch}
+                  onChange={(e) => setMiembroSearch(e.target.value)}
+                  className="px-3 py-2 border rounded-lg sm:ml-auto sm:w-64"
+                />
+              </div>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                {perfilesFiltrados.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.miembros.includes(p.id)}
+                      onChange={() => toggleMiembro(p.id)}
+                    />
+                    <span>{p.nombre} {p.apellido}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Seleccionados: {form.miembros.length}</p>
             </div>
-            <textarea placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="px-3 py-2 border rounded-lg sm:col-span-2" />
+            <textarea
+              placeholder="Descripción"
+              value={form.descripcion}
+              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+              className="px-3 py-2 border rounded-lg sm:col-span-2"
+            />
             <div className="sm:col-span-2 flex gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
@@ -130,7 +185,9 @@ export default function Servicios() {
 
       <div className="bg-white rounded-lg shadow overflow-auto">
         <table className="w-full text-sm min-w-[860px]">
-          <thead className="bg-gray-50"><tr><th className="p-2 text-left">Fecha</th><th>Tipo</th><th>Lugar</th><th>Vehículo</th><th>A cargo</th><th>Estado</th><th></th></tr></thead>
+          <thead className="bg-gray-50">
+            <tr><th className="p-2 text-left">Fecha</th><th>Tipo</th><th>Lugar</th><th>Vehículo</th><th>A cargo</th><th>Estado</th><th></th></tr>
+          </thead>
           <tbody>{servicios.map((s) => (
             <tr key={s.id} className="border-t">
               <td className="p-2">{new Date(s.fecha).toLocaleDateString()}</td>

@@ -9,6 +9,8 @@ const navItems = [
   { path: '/guardias', label: 'Guardias', icon: '📋', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/inventario', label: 'Inventario', icon: '📦', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/servicios', label: 'Servicios', icon: '🚨', roles: ['bombero', 'oficial', 'admin'] },
+  { path: '/citaciones', label: 'Citaciones', icon: '🗒️', roles: ['bombero', 'oficial', 'admin'] },
+  { path: '/practicas', label: 'Prácticas', icon: '🏋️', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/novedades', label: 'Novedades', icon: '📰', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/reportes', label: 'Reportes', icon: '📈', roles: ['oficial', 'admin'] },
   { path: '/usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },

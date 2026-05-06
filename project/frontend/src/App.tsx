@@ -9,6 +9,7 @@ import Salidas from './pages/salidas/Salidas'
 import Guardias from './pages/guardias/Guardias'
 import Inventario from './pages/inventario/Inventario'
 import Servicios from './pages/servicios/Servicios'
+import { Citaciones, Practicas } from './pages/citaciones/Citaciones'
 import Novedades from './pages/novedades/Novedades'
 import Reportes from './pages/reportes/Reportes'
 import Usuarios from './pages/usuarios/Usuarios'
@@ -27,6 +28,8 @@ function App() {
               <Route path="/guardias" element={<Guardias />} />
               <Route path="/inventario/*" element={<Inventario />} />
               <Route path="/servicios" element={<Servicios />} />
+              <Route path="/citaciones" element={<Citaciones />} />
+              <Route path="/practicas" element={<Practicas />} />
               <Route path="/novedades" element={<Novedades />} />
               <Route path="/reportes" element={<Reportes />} />
               <Route path="/usuarios" element={<Usuarios />} />

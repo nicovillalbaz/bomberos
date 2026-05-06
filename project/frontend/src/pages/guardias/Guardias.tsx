@@ -13,6 +13,7 @@ export default function Guardias() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [error, setError] = useState('')
+  const [miembroSearch, setMiembroSearch] = useState('')
   const [form, setForm] = useState({
     fechas: [''],
     tipo: 'voluntaria' as TipoGuardia,
@@ -51,6 +52,11 @@ export default function Guardias() {
     ...g,
     miembrosTexto: (g.miembros || []).map((m: any) => `${m.miembro?.nombre ?? ''} ${m.miembro?.apellido ?? ''}`.trim()).filter(Boolean).join(', '),
   })), [guardias])
+
+  const perfilesFiltrados = useMemo(() => {
+    const needle = miembroSearch.toLowerCase()
+    return perfiles.filter((p) => `${p.nombre} ${p.apellido}`.toLowerCase().includes(needle))
+  }, [perfiles, miembroSearch])
 
   const setFechaAt = (index: number, value: string) => {
     setForm((prev) => ({ ...prev, fechas: prev.fechas.map((f, i) => (i === index ? value : f)) }))
@@ -94,6 +100,7 @@ export default function Guardias() {
     await createMultipleGuardias(payload as any)
     setShowForm(false)
     setError('')
+    setMiembroSearch('')
     setForm({ fechas: [''], tipo: 'voluntaria', a_cargo_id: '', conductor_id: '', miembros: [] })
     load()
   }
@@ -175,9 +182,17 @@ export default function Guardias() {
             </select>
 
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Miembros</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                <label className="text-sm font-medium">Miembros</label>
+                <input
+                  placeholder="Buscar miembro"
+                  value={miembroSearch}
+                  onChange={(e) => setMiembroSearch(e.target.value)}
+                  className="px-3 py-2 border rounded-lg sm:ml-auto sm:w-64"
+                />
+              </div>
               <div className="mt-2 border rounded-lg p-3 max-h-56 overflow-y-auto space-y-2">
-                {perfiles.map((p) => (
+                {perfilesFiltrados.map((p) => (
                   <label key={p.id} className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"

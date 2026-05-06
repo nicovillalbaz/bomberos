@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Guardia, NovedadGlobal, Vehiculo } from '../../types'
+import type { Guardia, NovedadGlobal, Servicio, Vehiculo } from '../../types'
 import { supabase } from '../../lib/supabase'
-import { createNovedadIngresoRetiroCompania } from '../../api/novedades'
+import { createNovedadIngresoRetiroCompania, getNovedades } from '../../api/novedades'
+import { getServicioById } from '../../api/servicios'
 import { useAuth } from '../../hooks/useAuth'
 
 const quickLinks = [
@@ -10,11 +11,17 @@ const quickLinks = [
   { to: '/inventario', label: 'Inventario', icon: '📦' },
   { to: '/novedades', label: 'Novedades', icon: '📰' },
   { to: '/servicios', label: 'Servicios', icon: '🚨' },
+  { to: '/citaciones', label: 'Citaciones', icon: '🗒️' },
+  { to: '/practicas', label: 'Prácticas', icon: '🏋️' },
 ]
+
+const getActorNombre = (n: NovedadGlobal) =>
+  `${n.usuario?.nombre ?? ''} ${n.usuario?.apellido ?? ''}`.trim() || 'Un voluntario'
 
 export default function Dashboard() {
   const { profile } = useAuth()
   const [novedades, setNovedades] = useState<NovedadGlobal[]>([])
+  const [servicioResumen, setServicioResumen] = useState<Record<string, string>>({})
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [guardiaHoy, setGuardiaHoy] = useState<Guardia[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,14 +41,38 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       const hoy = new Date().toISOString().split('T')[0]
-      const [{ data: nov }, { data: veh }, { data: gua }] = await Promise.all([
-        supabase.from('novedades_global').select('*, usuario:perfiles(nombre,apellido)').order('created_at', { ascending: false }).limit(10),
+      const [nov, veh, guardias] = await Promise.all([
+        getNovedades(8),
         supabase.from('vehiculos').select('*').eq('estado', 'disponible'),
         supabase.from('guardias').select('*, a_cargo:perfiles!a_cargo_id(nombre,apellido), conductor:perfiles!conductor_id(nombre,apellido)').eq('fecha', hoy),
       ])
-      setNovedades(nov || [])
-      setVehiculos(veh || [])
-      setGuardiaHoy(gua || [])
+
+      setNovedades(nov)
+      const eventoIds = Array.from(new Set(
+        nov.filter((n) => n.entidad_relacionada === 'servicio' && n.entidad_id).map((n) => n.entidad_id as string),
+      ))
+      if (eventoIds.length) {
+        const eventos = await Promise.all(eventoIds.map((id) => getServicioById(id).catch(() => null)))
+        const map = {} as Record<string, string>
+        eventos.filter(Boolean).forEach((item) => {
+          const s = item as Servicio
+          const participantes = (s.personal || [])
+            .map((p) => `${p.persona?.nombre ?? ''} ${p.persona?.apellido ?? ''}`.trim())
+            .filter(Boolean)
+            .join(', ')
+          map[s.id] = [
+            `Tipo: ${s.tipo}.`,
+            s.lugar ? `Lugar: ${s.lugar}.` : '',
+            s.movil ? `Movil: ${s.movil.nombre}.` : '',
+            participantes ? `Participantes: ${participantes}` : '',
+          ].filter(Boolean).join(' ')
+        })
+        setServicioResumen(map)
+      } else {
+        setServicioResumen({})
+      }
+      setVehiculos((veh as any).data || [])
+      setGuardiaHoy((guardias as any).data || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -64,7 +95,7 @@ export default function Dashboard() {
       setEnCompania(false)
       return
     }
-    setEnCompania(data.titulo.toLowerCase().includes('ingresé'))
+    setEnCompania(data.titulo.toLowerCase().includes('ingres'))
   }
 
   const registrar = async (accion: 'ingreso' | 'retiro') => {
@@ -73,6 +104,24 @@ export default function Dashboard() {
     setFeedback(accion === 'ingreso' ? 'Ingreso registrado correctamente' : 'Retiro registrado correctamente')
     setTimeout(() => setFeedback(''), 2200)
     await loadData()
+  }
+
+  const getNovedadResumenDashboard = (n: NovedadGlobal) => {
+    const actor = getActorNombre(n)
+    if (n.modulo_origen === 'salidas' || n.tipo === 'salida_movil') {
+      return `${actor}: ${n.descripcion}`
+    }
+    if (n.modulo_origen === 'inventario' || n.entidad_relacionada === 'inventario') {
+      return `${actor}: ${n.descripcion}`
+    }
+    if (n.tipo === 'personal' && n.modulo_origen === 'dashboard') {
+      return n.descripcion
+    }
+    if (n.modulo_origen === 'servicios' || n.tipo === 'servicio') {
+      const extra = n.entidad_id ? servicioResumen[n.entidad_id] : ''
+      return extra ? `${actor}: ${n.descripcion} (${extra})` : `${actor}: ${n.descripcion}`
+    }
+    return n.descripcion
   }
 
   if (loading) return <div className="text-center py-8">Cargando...</div>
@@ -92,9 +141,19 @@ export default function Dashboard() {
 
       <div className="space-y-2">
         {!enCompania ? (
-          <button onClick={() => registrar('ingreso')} className="w-full sm:w-auto px-4 py-3 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors">Ingresé en la compañía</button>
+          <button
+            onClick={() => registrar('ingreso')}
+            className="w-full sm:w-auto px-4 py-3 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+          >
+            Ingreso en la compañía
+          </button>
         ) : (
-          <button onClick={() => registrar('retiro')} className="w-full sm:w-auto px-4 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors">Me retiro de la compañía</button>
+          <button
+            onClick={() => registrar('retiro')}
+            className="w-full sm:w-auto px-4 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+          >
+            Retiro de la compañía
+          </button>
         )}
         {feedback && (
           <div className="inline-block px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm animate-pulse">
@@ -136,8 +195,8 @@ export default function Dashboard() {
             novedades.map((n) => (
               <div key={n.id} className="border-b py-2">
                 <p className="font-medium">{n.titulo}</p>
-                <p className="text-sm text-gray-600">{n.descripcion}</p>
-                <p className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</p>
+                <p className="text-sm text-gray-600">{getNovedadResumenDashboard(n)}</p>
+                <p className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()} - {getActorNombre(n)}</p>
               </div>
             ))
           }
@@ -146,3 +205,4 @@ export default function Dashboard() {
     </div>
   )
 }
+

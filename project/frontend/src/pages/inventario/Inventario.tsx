@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { getVehiculos } from '../../api/vehiculos'
+import { getVehiculosDisponibles } from '../../api/vehiculos'
 import {
   getInventarioCompania,
   getInventarioDeposito,
@@ -31,7 +31,7 @@ function InventarioMovilView() {
   const [observacion, setObservacion] = useState('')
 
   useEffect(() => {
-    Promise.all([getVehiculos(), getMateriales()]).then(([v, m]) => {
+    Promise.all([getVehiculosDisponibles(), getMateriales()]).then(([v, m]) => {
       setVehiculos(v)
       setMateriales(m)
     })
@@ -45,7 +45,7 @@ function InventarioMovilView() {
     }
     const data = await getInventarioMovil(movilId)
     const map: Record<string, number> = {}
-    data.forEach((i) => { map[i.material_id] = i.cantidad })
+    data.forEach((i) => { if (i.cantidad > 0) map[i.material_id] = i.cantidad })
     setInventario(map)
   }
 
@@ -68,6 +68,8 @@ function InventarioMovilView() {
     await loadInventario(selected)
   }
 
+  const materialesConStock = materiales.filter((m) => inventario[m.id] > 0)
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-lg shadow">
@@ -81,42 +83,47 @@ function InventarioMovilView() {
 
       {selected && (
         <div className="bg-white rounded-lg shadow overflow-auto">
-          <table className="w-full text-sm min-w-[760px]">
-            <thead className="bg-gray-50">
-              <tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Stock móvil</th><th>Origen</th><th>Cantidad</th><th></th></tr>
-            </thead>
-            <tbody>
-              {materiales.map((m) => (
-                <tr key={m.id} className="border-t">
-                  <td className="p-2">{m.nombre}</td>
-                  <td className="p-2">{m.categoria}</td>
-                  <td className="p-2 font-semibold">{inventario[m.id] ?? 0}</td>
-                  <td className="p-2">
-                    <select
-                      value={origen[m.id] ?? 'deposito'}
-                      onChange={(e) => setOrigen((prev) => ({ ...prev, [m.id]: e.target.value as 'deposito' | 'compania' }))}
-                      className="px-2 py-1 border rounded"
-                    >
-                      <option value="deposito">Depósito</option>
-                      <option value="compania">Compañía</option>
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={cantidad[m.id] ?? 0}
-                      onChange={(e) => setCantidad((prev) => ({ ...prev, [m.id]: Number(e.target.value) || 0 }))}
-                      className="w-24 px-2 py-1 border rounded"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <button onClick={() => cargarMaterial(m.id)} className="text-blue-600 text-xs">Registrar carga</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {materialesConStock.length === 0 ? (
+            <p className="p-4 text-gray-500">No hay stock cargado en este móvil.</p>
+          ) : (
+            <table className="w-full text-sm min-w-[760px]">
+              <thead className="bg-gray-50">
+                <tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Stock móvil</th><th>Origen</th><th>Cantidad</th><th></th></tr>
+              </thead>
+              <tbody>
+                {materialesConStock.map((m) => (
+                  <tr key={m.id} className="border-t">
+                    <td className="p-2">{m.nombre}</td>
+                    <td className="p-2">{m.categoria}</td>
+                    <td className="p-2 font-semibold">{inventario[m.id] ?? 0}</td>
+                    <td className="p-2">
+                      <select
+                        value={origen[m.id] ?? 'deposito'}
+                        onChange={(e) => setOrigen((prev) => ({ ...prev, [m.id]: e.target.value as 'deposito' | 'compania' }))}
+                        className="px-2 py-1 border rounded"
+                      >
+                        <option value="deposito">Depósito</option>
+                        <option value="compania">Compañía</option>
+                      </select>
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={inventario[m.id] ?? 0}
+                        value={cantidad[m.id] ?? 0}
+                        onChange={(e) => setCantidad((prev) => ({ ...prev, [m.id]: Number(e.target.value) || 0 }))}
+                        className="w-24 px-2 py-1 border rounded"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <button onClick={() => cargarMaterial(m.id)} className="text-blue-600 text-xs">Registrar carga</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
@@ -138,19 +145,29 @@ function TransferToUbicacionView({
   const [materiales, setMateriales] = useState<Material[]>([])
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [materialId, setMaterialId] = useState('')
+  const [editing, setEditing] = useState('')
   const [origenTipo, setOrigenTipo] = useState<InventarioOrigenTipo>(origenOpciones[0])
   const [origenMovilId, setOrigenMovilId] = useState('')
   const [cantidad, setCantidad] = useState(1)
   const [motivo, setMotivo] = useState('')
 
   const load = async () => {
-    const [stock, mats, movs] = await Promise.all([getStock(), getMateriales(), getVehiculos()])
-    setData(stock)
+    const [stock, mats, movs] = await Promise.all([getStock(), getMateriales(), getVehiculosDisponibles()])
+    setData(stock.filter((i) => (i.cantidad ?? 0) > 0))
     setMateriales(mats)
     setVehiculos(movs)
   }
 
   useEffect(() => { load() }, [])
+
+  const startEdit = (item: InventarioUbicacionItem) => {
+    setEditing(item.material_id)
+    setMaterialId(item.material_id)
+    setOrigenTipo(origenOpciones[0])
+    setCantidad(Math.min(item.cantidad, 1))
+    setMotivo(`Traslado de ${item.material?.nombre ?? 'material'} desde ${titulo.toLowerCase()} `)
+    setOrigenMovilId('')
+  }
 
   const registrar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -164,43 +181,91 @@ function TransferToUbicacionView({
       motivo: motivo || `Movimiento hacia ${titulo}`,
       observacion: null,
     })
+    setEditing('')
     setCantidad(1)
+    setMaterialId('')
+    setMotivo('')
+    setOrigenMovilId('')
     await load()
+  }
+
+  const labelMap: Record<string, string> = {
+    deposito: 'Depósito',
+    compania: 'Compañía',
+    movil: 'Móvil',
+    externo: 'Externo',
   }
 
   return (
     <div className="space-y-4">
-      <form onSubmit={registrar} className="bg-white p-4 rounded-lg shadow grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <select required value={materialId} onChange={(e) => setMaterialId(e.target.value)} className="px-3 py-2 border rounded-lg">
-          <option value="">Material</option>
-          {materiales.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-        </select>
-        <select value={origenTipo} onChange={(e) => setOrigenTipo(e.target.value as InventarioOrigenTipo)} className="px-3 py-2 border rounded-lg">
-          {origenOpciones.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-        {origenTipo === 'movil' ? (
-          <select required value={origenMovilId} onChange={(e) => setOrigenMovilId(e.target.value)} className="px-3 py-2 border rounded-lg">
-            <option value="">Móvil origen</option>
-            {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-          </select>
-        ) : (
-          <input type="number" min={1} value={cantidad} onChange={(e) => setCantidad(Number(e.target.value) || 1)} className="px-3 py-2 border rounded-lg" />
-        )}
-        {origenTipo === 'movil' && (
-          <input type="number" min={1} value={cantidad} onChange={(e) => setCantidad(Number(e.target.value) || 1)} className="px-3 py-2 border rounded-lg" />
-        )}
-        <input placeholder="Motivo (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="sm:col-span-2 px-3 py-2 border rounded-lg" />
-        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Registrar movimiento</button>
-      </form>
-
-      <div className="bg-white rounded-lg shadow p-4">{titulo}: {data.length} materiales con stock</div>
+      <div className="bg-white rounded-lg shadow overflow-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th className="p-2">Categoría</th><th className="p-2">Stock en {titulo}</th><th className="p-2">Origen</th><th className="p-2">Acción</th></tr></thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr><td className="p-3 text-gray-500" colSpan={5}>No hay stock para mostrar.</td></tr>
+            ) : data.map((r) => (
+              <React.Fragment key={r.material_id}>
+                <tr className="border-t">
+                  <td className="p-2">{r.material?.nombre}</td>
+                  <td className="p-2">{r.material?.categoria}</td>
+                  <td className="p-2">{r.cantidad}</td>
+                  <td className="p-2">{labelMap[destinoTipo]}</td>
+                  <td className="p-2">
+                    <button
+                      onClick={() => startEdit(r)}
+                      className="text-primary-600 text-xs px-2 py-1 rounded border border-primary-200"
+                    >
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+                {editing === r.material_id && (
+                  <tr className="bg-gray-50 border-t">
+                    <td className="p-2" colSpan={5}>
+                      <form onSubmit={registrar} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <select value={origenTipo} onChange={(e) => setOrigenTipo(e.target.value as InventarioOrigenTipo)} className="px-3 py-2 border rounded-lg">
+                          {origenOpciones.map((o) => <option key={o} value={o}>{labelMap[o]}</option>)}
+                        </select>
+                        {origenTipo === 'movil' ? (
+                          <select required value={origenMovilId} onChange={(e) => setOrigenMovilId(e.target.value)} className="px-3 py-2 border rounded-lg">
+                            <option value="">Móvil origen</option>
+                            {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                          </select>
+                        ) : (
+                          <input disabled value={labelMap[origenTipo]} className="px-3 py-2 border rounded-lg bg-gray-50" />
+                        )}
+                        <input
+                          type="number"
+                          min={1}
+                          max={r.cantidad}
+                          value={cantidad}
+                          onChange={(e) => setCantidad(Number(e.target.value) || 1)}
+                          className="px-3 py-2 border rounded-lg"
+                        />
+                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Guardar movimiento</button>
+                        <input
+                          placeholder="Motivo (opcional)"
+                          value={motivo}
+                          onChange={(e) => setMotivo(e.target.value)}
+                          className="sm:col-span-4 px-3 py-2 border rounded-lg"
+                        />
+                      </form>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
 function InventarioGlobalView() {
   const [data, setData] = useState<Array<Record<string, unknown>>>([])
-  useEffect(() => { getInventarioGlobal().then((v) => setData(v ?? [])) }, [])
+  useEffect(() => { getInventarioGlobal().then((v) => setData((v || []).filter((r: any) => Number(r.total_general ?? 0) > 0)) ) }, [])
   return (
     <div className="bg-white rounded-lg shadow overflow-auto">
       <table className="w-full text-sm min-w-[700px]">
@@ -235,7 +300,7 @@ function AjustesMovimientosView() {
   const [observacion, setObservacion] = useState('')
 
   useEffect(() => {
-    Promise.all([getMateriales(), getVehiculos()]).then(([m, v]) => {
+    Promise.all([getMateriales(), getVehiculosDisponibles()]).then(([m, v]) => {
       setMateriales(m)
       setVehiculos(v)
     })
