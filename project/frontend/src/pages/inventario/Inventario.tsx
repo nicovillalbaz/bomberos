@@ -211,7 +211,16 @@ function TransferToUbicacionView({
     }))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    setEditando(false)
+    setBusqueda('')
+    setOrigen({})
+    setOrigenMovil({})
+    setCantidad({})
+    setMotivo('')
+    setStockMoviles({})
+    load()
+  }, [destinoTipo, getStock])
 
   const getMaxCantidad = (materialId: string) => {
     const origenTipo = origen[materialId] || origenOpciones[0]
