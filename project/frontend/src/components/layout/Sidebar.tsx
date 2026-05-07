@@ -12,7 +12,6 @@ const navItems = [
   { path: '/citaciones', label: 'Citaciones', icon: '🗒️', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/practicas', label: 'Prácticas', icon: '🏋️', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/novedades', label: 'Novedades', icon: '📰', roles: ['bombero', 'oficial', 'admin'] },
-  { path: '/reportes', label: 'Reportes', icon: '📈', roles: ['oficial', 'admin'] },
   { path: '/usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },
 ]
 

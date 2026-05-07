@@ -34,7 +34,9 @@ export default function Servicios() {
 
   const load = async () => {
     const data = await getServiciosByDateRange(tab, fechaDesde || undefined, fechaHasta || undefined)
-    setServicios(data)
+    setServicios(
+      data.filter((s) => s.tipo !== 'citacion' && s.tipo !== 'practica')
+    )
   }
 
   const loadAux = async () => {
