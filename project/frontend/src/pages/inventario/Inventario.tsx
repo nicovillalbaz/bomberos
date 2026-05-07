@@ -142,125 +142,309 @@ function TransferToUbicacionView({
   getStock: () => Promise<InventarioUbicacionItem[]>
 }) {
   const [data, setData] = useState<InventarioUbicacionItem[]>([])
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
-  const [materialId, setMaterialId] = useState('')
-  const [editing, setEditing] = useState('')
-  const [origenTipo, setOrigenTipo] = useState<InventarioOrigenTipo>(origenOpciones[0])
-  const [origenMovilId, setOrigenMovilId] = useState('')
-  const [cantidad, setCantidad] = useState(1)
+  const [stockDestino, setStockDestino] = useState<Record<string, number>>({})
+  const [stockOrigen, setStockOrigen] = useState<Record<string, number>>({})
+  const [moviles, setMoviles] = useState<Vehiculo[]>([])
+  const [materialesEditables, setMaterialesEditables] = useState<Material[]>([])
+  const [busqueda, setBusqueda] = useState('')
+  const [editando, setEditando] = useState(false)
+  const [origen, setOrigen] = useState<Record<string, InventarioOrigenTipo>>({})
+  const [origenMovil, setOrigenMovil] = useState<Record<string, string>>({})
+  const [cantidad, setCantidad] = useState<Record<string, number>>({})
   const [motivo, setMotivo] = useState('')
+  const [stockMoviles, setStockMoviles] = useState<Record<string, Record<string, number>>>({})
+
+  const labelMap: Record<InventarioOrigenTipo, string> = {
+    deposito: 'Deposito',
+    compania: 'Compania',
+    movil: 'Movil',
+    externo: 'Externo',
+  }
 
   const load = async () => {
-    const [stock, movs] = await Promise.all([getStock(), getVehiculosDisponibles()])
-    setData(stock.filter((i) => (i.cantidad ?? 0) > 0))
-    setVehiculos(movs)
+    const stockActual = await getStock()
+    const [movData, materialesAll, inventarioGeneral] = await Promise.all([
+      getVehiculosDisponibles(),
+      getMateriales(),
+      getInventarioGlobal(),
+    ])
+
+    const stockActualConValor = (stockActual || []).filter((i) => (i.cantidad ?? 0) > 0)
+    setData(stockActualConValor)
+    setMoviles(movData)
+
+    const destinoStock = Object.fromEntries(
+      (stockActualConValor || []).map((item) => [item.material_id, item.cantidad])
+    ) as Record<string, number>
+    setStockDestino(destinoStock)
+
+    const stockReferencia =
+      destinoTipo === 'compania'
+        ? await getInventarioDeposito()
+        : await getInventarioCompania()
+
+    const stockOrigenMap = Object.fromEntries(
+      (stockReferencia || [])
+        .filter((item) => (item.cantidad ?? 0) > 0)
+        .map((item) => [item.material_id, item.cantidad])
+    ) as Record<string, number>
+    setStockOrigen(stockOrigenMap)
+
+    const globalByMaterial = new Map<string, number>(
+      ((inventarioGeneral as unknown as Array<{ material: string; total_general: number }>) || [])
+        .map((item) => [String(item.material), Number(item.total_general ?? 0)])
+    )
+
+    const editables = materialesAll
+      .filter((m) => (globalByMaterial.get(m.nombre) || 0) > 0)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+    setMaterialesEditables(editables)
+
+    setOrigen((prev) => ({
+      ...prev,
+      ...Object.fromEntries(editables.map((m) => [m.id, prev[m.id] || origenOpciones[0]])),
+    }))
+    setCantidad((prev) => ({
+      ...prev,
+      ...Object.fromEntries(editables.map((m) => [m.id, prev[m.id] || 0])),
+    }))
   }
 
   useEffect(() => { load() }, [])
 
-  const startEdit = (item: InventarioUbicacionItem) => {
-    setEditing(item.material_id)
-    setMaterialId(item.material_id)
-    setOrigenTipo(origenOpciones[0])
-    setCantidad(Math.min(item.cantidad, 1))
-    setMotivo(`Traslado de ${item.material?.nombre ?? 'material'} desde ${titulo.toLowerCase()} `)
-    setOrigenMovilId('')
+  const getMaxCantidad = (materialId: string) => {
+    const origenTipo = origen[materialId] || origenOpciones[0]
+    if (origenTipo === 'externo') return Number.POSITIVE_INFINITY
+    if (origenTipo === 'movil') {
+      const movilId = origenMovil[materialId]
+      if (!movilId) return 0
+      return stockMoviles[movilId]?.[materialId] ?? 0
+    }
+    return stockOrigen[materialId] || 0
   }
 
-  const registrar = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!materialId || cantidad <= 0) return
+  const ensureStockMovil = async (movilId: string) => {
+    if (!movilId || stockMoviles[movilId]) return
+    const data = await getInventarioMovil(movilId)
+    const stockByMaterial = Object.fromEntries((data || []).map((item) => [item.material_id, item.cantidad])) as Record<string, number>
+    setStockMoviles((prev) => ({ ...prev, [movilId]: stockByMaterial }))
+  }
+
+  const ajustarCantidad = (materialId: string, delta: number) => {
+    setCantidad((prev) => {
+      const origenTipo = origen[materialId] || origenOpciones[0]
+      const max = getMaxCantidad(materialId)
+      const actual = Math.max(0, Math.floor((prev[materialId] || 0)))
+      const next = actual + delta
+      if (origenTipo !== 'externo' && Number.isFinite(max)) {
+        return { ...prev, [materialId]: Math.max(0, Math.min(max, next)) }
+      }
+      return { ...prev, [materialId]: Math.max(0, next) }
+    })
+  }
+
+  const setCantidadDirecta = (materialId: string, valor: string) => {
+    const value = Math.max(0, Number(valor) || 0)
+    const max = getMaxCantidad(materialId)
+    setCantidad((prev) => ({
+      ...prev,
+      [materialId]: Number.isFinite(max) ? Math.max(0, Math.min(max, value)) : value,
+    }))
+  }
+
+  const registrar = async (materialId: string) => {
+    const origenTipo = origen[materialId] || origenOpciones[0]
+    const cantidadActual = Number(cantidad[materialId] || 0)
+    if (cantidadActual <= 0) return
+
+    const origenRef = origenTipo === 'movil' ? (origenMovil[materialId] || null) : null
+    const max = getMaxCantidad(materialId)
+    if (origenTipo === 'movil' && !origenRef) return
+    if (Number.isFinite(max) && cantidadActual > max) return
+
     await transferirInventario({
       material_id: materialId,
-      cantidad,
+      cantidad: cantidadActual,
       origen_tipo: origenTipo,
-      origen_ref: origenTipo === 'movil' ? origenMovilId : null,
+      origen_ref: origenRef,
       destino_tipo: destinoTipo,
       motivo: motivo || `Movimiento hacia ${titulo}`,
       observacion: null,
     })
-    setEditing('')
-    setCantidad(1)
-    setMaterialId('')
-    setMotivo('')
-    setOrigenMovilId('')
+
+    setCantidad((prev) => ({ ...prev, [materialId]: 0 }))
     await load()
   }
 
-  const labelMap: Record<string, string> = {
-    deposito: 'Depósito',
-    compania: 'Compañía',
-    movil: 'Móvil',
-    externo: 'Externo',
-  }
+  const materialesVisibles = materialesEditables.filter((m) => {
+    const q = busqueda.toLowerCase().trim()
+    if (!q) return true
+    return m.nombre.toLowerCase().includes(q) || m.categoria.toLowerCase().includes(q)
+  })
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-lg shadow overflow-auto">
-        <table className="w-full text-sm min-w-[700px]">
-          <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th className="p-2">Categoría</th><th className="p-2">Stock en {titulo}</th><th className="p-2">Origen</th><th className="p-2">Acción</th></tr></thead>
-          <tbody>
-            {data.length === 0 ? (
-              <tr><td className="p-3 text-gray-500" colSpan={5}>No hay stock para mostrar.</td></tr>
-            ) : data.map((r) => (
-              <React.Fragment key={r.material_id}>
-                <tr className="border-t">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Stock actual en {titulo}</h2>
+        <button
+          onClick={() => setEditando((v) => !v)}
+          className="px-4 py-2 rounded-lg border border-primary-600 text-primary-700"
+        >
+          {editando ? 'Cerrar editor' : 'Editar'}
+        </button>
+      </div>
+
+      {!editando ? (
+        <div className="bg-white rounded-lg shadow overflow-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-2 text-left">Material</th>
+                <th className="p-2">Categoria</th>
+                <th className="p-2">Stock en {titulo}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr><td className="p-3 text-gray-500" colSpan={3}>No hay material con stock en esta ubicacion.</td></tr>
+              ) : data.map((r) => (
+                <tr key={r.material_id} className="border-t">
                   <td className="p-2">{r.material?.nombre}</td>
                   <td className="p-2">{r.material?.categoria}</td>
                   <td className="p-2">{r.cantidad}</td>
-                  <td className="p-2">{labelMap[destinoTipo]}</td>
-                  <td className="p-2">
-                    <button
-                      onClick={() => startEdit(r)}
-                      className="text-primary-600 text-xs px-2 py-1 rounded border border-primary-200"
-                    >
-                      Editar
-                    </button>
-                  </td>
                 </tr>
-                {editing === r.material_id && (
-                  <tr className="bg-gray-50 border-t">
-                    <td className="p-2" colSpan={5}>
-                      <form onSubmit={registrar} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                        <select value={origenTipo} onChange={(e) => setOrigenTipo(e.target.value as InventarioOrigenTipo)} className="px-3 py-2 border rounded-lg">
-                          {origenOpciones.map((o) => <option key={o} value={o}>{labelMap[o]}</option>)}
-                        </select>
-                        {origenTipo === 'movil' ? (
-                          <select required value={origenMovilId} onChange={(e) => setOrigenMovilId(e.target.value)} className="px-3 py-2 border rounded-lg">
-                            <option value="">Móvil origen</option>
-                            {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="bg-white rounded-lg shadow p-3 flex gap-3 flex-wrap items-center">
+            <input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar material"
+              className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]"
+            />
+            <input
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Motivo (opcional)"
+              className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]"
+            />
+          </div>
+          <div className="bg-white rounded-lg shadow overflow-auto">
+            <table className="w-full text-sm min-w-[980px]">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-2 text-left">Material</th>
+                  <th className="p-2">Categoria</th>
+                  <th className="p-2">Stock en {titulo}</th>
+                  <th className="p-2">Origen</th>
+                  <th className="p-2">Cant</th>
+                  <th className="p-2">Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materialesVisibles.length === 0 ? (
+                  <tr><td className="p-3 text-gray-500" colSpan={6}>No hay materiales con stock global para editar.</td></tr>
+                ) : materialesVisibles.map((m) => {
+                  const origenTipo = origen[m.id] || origenOpciones[0]
+                  const movilId = origenMovil[m.id] || ''
+                  const max = getMaxCantidad(m.id)
+                  const stockTexto = Number.isFinite(max) ? String(max) : 'Sin limite'
+                  const qty = cantidad[m.id] || 0
+
+                  return (
+                    <tr key={m.id} className="border-t">
+                      <td className="p-2">{m.nombre}</td>
+                      <td className="p-2">{m.categoria}</td>
+                      <td className="p-2">{stockDestino[m.id] || 0}</td>
+                      <td className="p-2">
+                        <div className="space-y-2">
+                          <select
+                            value={origenTipo}
+                            onChange={(e) => {
+                              const value = e.target.value as InventarioOrigenTipo
+                              setOrigen((prev) => ({ ...prev, [m.id]: value }))
+                              if (value !== 'movil') {
+                                setOrigenMovil((prev) => ({ ...prev, [m.id]: '' }))
+                              }
+                            }}
+                            className="px-2 py-1 border rounded-lg"
+                          >
+                            {origenOpciones.map((o) => <option key={o} value={o}>{labelMap[o]}</option>)}
                           </select>
-                        ) : (
-                          <input disabled value={labelMap[origenTipo]} className="px-3 py-2 border rounded-lg bg-gray-50" />
-                        )}
-                        <input
-                          type="number"
-                          min={1}
-                          max={r.cantidad}
-                          value={cantidad}
-                          onChange={(e) => setCantidad(Number(e.target.value) || 1)}
-                          className="px-3 py-2 border rounded-lg"
-                        />
-                        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Guardar movimiento</button>
-                        <input
-                          placeholder="Motivo (opcional)"
-                          value={motivo}
-                          onChange={(e) => setMotivo(e.target.value)}
-                          className="sm:col-span-4 px-3 py-2 border rounded-lg"
-                        />
-                      </form>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                          {origenTipo === 'movil' && (
+                            <select
+                              required
+                              value={movilId}
+                              onChange={async (e) => {
+                                const selected = e.target.value
+                                setOrigenMovil((prev) => ({ ...prev, [m.id]: selected }))
+                                await ensureStockMovil(selected)
+                                setCantidad((prev) => ({ ...prev, [m.id]: 0 }))
+                              }}
+                              className="px-2 py-1 border rounded-lg w-full"
+                            >
+                              <option value="">Movil origen</option>
+                              {moviles.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                            </select>
+                          )}
+                          <p className="text-xs text-gray-600">Disponible: {stockTexto}</p>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => ajustarCantidad(m.id, -1)}
+                            className="w-7 h-7 border rounded-lg"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={0}
+                            max={Number.isFinite(max) ? max : undefined}
+                            value={qty}
+                            onChange={(e) => setCantidadDirecta(m.id, e.target.value)}
+                            className="w-20 px-2 py-1 border rounded-lg text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => ajustarCantidad(m.id, 1)}
+                            className="w-7 h-7 border rounded-lg"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <button
+                          onClick={() => registrar(m.id)}
+                          className="px-3 py-1.5 bg-primary-600 text-white rounded-lg"
+                          disabled={
+                            qty <= 0 ||
+                            (origenTipo === 'movil' && !movilId) ||
+                            (origenTipo !== 'externo' && Number.isFinite(max) && qty > max)
+                          }
+                        >
+                          Aplicar
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
 function InventarioGlobalView() {
   const [data, setData] = useState<Array<Record<string, unknown>>>([])
   useEffect(() => { getInventarioGlobal().then((v) => setData((v || []).filter((r: any) => Number(r.total_general ?? 0) > 0)) ) }, [])
@@ -459,3 +643,4 @@ export default function Inventario() {
     </div>
   )
 }
+
