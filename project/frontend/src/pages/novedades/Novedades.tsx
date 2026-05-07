@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { NovedadGlobal, Servicio } from '../../types'
+import type { NovedadGlobal } from '../../types'
 import { createNovedadManual, getNovedades } from '../../api/novedades'
 import { getServicioById } from '../../api/servicios'
 
@@ -58,23 +58,42 @@ export default function Novedades() {
   const getResumen = (n: NovedadGlobal) => {
     const actor = getActor(n)
     const detalleServicio = n.entidad_id ? serviceCtx[n.entidad_id] : undefined
-    if (n.modulo_origen === 'salidas' || n.tipo === 'salida_movil') {
-      return `${actor} registró salida de móvil. ${n.descripcion}`
+    const descripcion = n.descripcion?.trim() || ''
+
+    if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
+      if (/ingres/i.test(n.titulo) || /ingres/i.test(descripcion)) return `${actor} ingresó a la compañía.`
+      if (/retiro|retir/i.test(n.titulo) || /retiro/i.test(descripcion)) return `${actor} se retiró de la compañía.`
+      return `${actor}: ${descripcion}`
     }
+
+    if (n.modulo_origen === 'salidas' || n.tipo === 'salida_movil') {
+      const movilMatch = descripcion.match(/salida (?:del\s+)?(.+?)\s+con destino/i)
+      const destinoMatch = descripcion.match(/con destino\s+a\s+(.+)/i)
+      const movil = movilMatch?.[1]?.trim()
+      const destino = destinoMatch?.[1]?.trim()
+      if (movil || destino) {
+        const partes = [
+          movil ? `salió en el móvil ${movil}` : 'salió en un móvil',
+          destino ? `hacia ${destino}` : 'hacia el destino definido',
+        ]
+        return `${actor} ${partes.join(' ')}.`
+      }
+      return `${actor}: salida de móvil registrada.`
+    }
+
+    if (n.modulo_origen === 'inventario' || n.entidad_relacionada === 'inventario') {
+      return `${actor} actualizó inventario. ${descripcion || 'Movimiento registrado automáticamente.'}`
+    }
+
     if (n.entidad_relacionada === 'servicio' && detalleServicio) {
-      const base = `${actor} creó evento de ${detalleServicio.tipo}.`
+      const base = `${actor} cargó asistencia para ${detalleServicio.tipo}.`
       const lugar = detalleServicio.lugar ? ` Lugar: ${detalleServicio.lugar}.` : ''
       const movil = detalleServicio.movil ? ` Móvil: ${detalleServicio.movil}.` : ''
       const participantes = ` Participantes: ${detalleServicio.participantes}.`
       return `${base}${lugar}${movil}${participantes}`
     }
-    if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
-      return n.descripcion
-    }
-    if (n.entidad_id && n.modulo_origen === 'inventario') {
-      return `${actor} actualizó inventario. ${n.descripcion}`
-    }
-    return n.descripcion
+
+    return `${actor}: ${descripcion || n.titulo || 'Novedad registrada.'}`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

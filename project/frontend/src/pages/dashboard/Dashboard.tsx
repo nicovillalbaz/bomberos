@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [enCompania, setEnCompania] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const limiteNovedades = 10
 
   useEffect(() => {
     loadData()
@@ -42,7 +43,7 @@ export default function Dashboard() {
     try {
       const hoy = new Date().toISOString().split('T')[0]
       const [nov, veh, guardias] = await Promise.all([
-        getNovedades(8),
+        getNovedades(limiteNovedades),
         supabase.from('vehiculos').select('*').eq('estado', 'disponible'),
         supabase.from('guardias').select('*, a_cargo:perfiles!a_cargo_id(nombre,apellido), conductor:perfiles!conductor_id(nombre,apellido)').eq('fecha', hoy),
       ])
@@ -106,22 +107,36 @@ export default function Dashboard() {
     await loadData()
   }
 
+  const parseSalidaDeMovil = (n: NovedadGlobal) => {
+    const movilMatch = (n.descripcion || '').match(/salida (?:del\s+)?(.+?)\s+con destino a\s+(.+)/i)
+    if (!movilMatch) return 'Se registró salida de móvil.'
+    return `Salida del ${movilMatch[1].trim()} con destino a ${movilMatch[2].trim()}.`
+  }
+
   const getNovedadResumenDashboard = (n: NovedadGlobal) => {
     const actor = getActorNombre(n)
+    const descripcion = n.descripcion?.trim() || ''
+
     if (n.modulo_origen === 'salidas' || n.tipo === 'salida_movil') {
-      return `${actor}: ${n.descripcion}`
+      return `${actor}: ${parseSalidaDeMovil(n)}`
+    }
+    if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
+      if (/ingres/i.test(n.titulo) || /ingres/i.test(descripcion)) {
+        return `${actor} ingresó a la compañía.`
+      }
+      if (/retiro|retir/i.test(n.titulo) || /retiro/i.test(descripcion)) {
+        return `${actor} se retiró de la compañía.`
+      }
+      return descripcion || `${actor} actualizó su estado de compañía.`
     }
     if (n.modulo_origen === 'inventario' || n.entidad_relacionada === 'inventario') {
-      return `${actor}: ${n.descripcion}`
-    }
-    if (n.tipo === 'personal' && n.modulo_origen === 'dashboard') {
-      return n.descripcion
+      return `${actor}: Movimiento de inventario registrado (${n.entidad_id ? `registro ${n.entidad_id}` : 'origen/destino sin detalle'}). ${descripcion}`
     }
     if (n.modulo_origen === 'servicios' || n.tipo === 'servicio') {
       const extra = n.entidad_id ? servicioResumen[n.entidad_id] : ''
-      return extra ? `${actor}: ${n.descripcion} (${extra})` : `${actor}: ${n.descripcion}`
+      return extra ? `${actor}: Se registró un servicio. ${extra}` : `${actor}: ${descripcion}`
     }
-    return n.descripcion
+    return `${actor}: ${descripcion}`
   }
 
   if (loading) return <div className="text-center py-8">Cargando...</div>

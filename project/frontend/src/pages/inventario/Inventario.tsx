@@ -142,7 +142,6 @@ function TransferToUbicacionView({
   getStock: () => Promise<InventarioUbicacionItem[]>
 }) {
   const [data, setData] = useState<InventarioUbicacionItem[]>([])
-  const [materiales, setMateriales] = useState<Material[]>([])
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [materialId, setMaterialId] = useState('')
   const [editing, setEditing] = useState('')
@@ -152,9 +151,8 @@ function TransferToUbicacionView({
   const [motivo, setMotivo] = useState('')
 
   const load = async () => {
-    const [stock, mats, movs] = await Promise.all([getStock(), getMateriales(), getVehiculosDisponibles()])
+    const [stock, movs] = await Promise.all([getStock(), getVehiculosDisponibles()])
     setData(stock.filter((i) => (i.cantidad ?? 0) > 0))
-    setMateriales(mats)
     setVehiculos(movs)
   }
 
