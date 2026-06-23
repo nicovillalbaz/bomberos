@@ -20,126 +20,36 @@ import type {
   Vehiculo,
 } from '../../types'
 
-function InventarioMovilView() {
+function InventarioMovilView({ vehiculos }: { vehiculos: Vehiculo[] }) {
   const { movilId = '' } = useParams()
-  const [materiales, setMateriales] = useState<Material[]>([])
-  const [inventario, setInventario] = useState<Record<string, number>>({})
-  const [cantidad, setCantidad] = useState<Record<string, number>>({})
-  const [origen, setOrigen] = useState<Record<string, 'deposito' | 'compania'>>({})
-  const [motivo, setMotivo] = useState('')
-  const [observacion, setObservacion] = useState('')
-
-  useEffect(() => {
-    getMateriales().then(setMateriales)
-  }, [])
-
-  const loadInventario = async () => {
-    if (!movilId) {
-      setInventario({})
-      return
-    }
-    const data = await getInventarioMovil(movilId)
-    const map: Record<string, number> = {}
-    data.forEach((item) => {
-      if (item.cantidad > 0) map[item.material_id] = item.cantidad
-    })
-    setInventario(map)
-  }
-
-  useEffect(() => {
-    setCantidad({})
-    setOrigen({})
-    loadInventario()
-  }, [movilId])
-
-  const cargarMaterial = async (materialId: string) => {
-    if (!movilId) return
-    const qty = Number(cantidad[materialId] ?? 0)
-    if (!Number.isFinite(qty) || qty <= 0) return
-
-    await transferirInventario({
-      material_id: materialId,
-      cantidad: qty,
-      origen_tipo: origen[materialId] ?? 'deposito',
-      destino_tipo: 'movil',
-      destino_ref: movilId,
-      motivo: motivo || 'Carga de movil',
-      observacion: observacion || null,
-    })
-
-    setCantidad((prev) => ({ ...prev, [materialId]: 0 }))
-    await loadInventario()
-  }
-
-  const materialesConStock = materiales.filter((material) => inventario[material.id] > 0)
+  const vehiculo = vehiculos.find((item) => item.id === movilId)
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 surface p-3">
-        <input placeholder="Motivo (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="px-3 py-2 border rounded-lg" />
-        <input placeholder="Observacion (opcional)" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="px-3 py-2 border rounded-lg" />
-      </div>
-
-      <div className="surface overflow-auto">
-        {materialesConStock.length === 0 ? (
-          <p className="p-4 text-gray-500">No hay stock cargado en este movil.</p>
-        ) : (
-          <table className="w-full text-sm min-w-[760px]">
-            <thead className="bg-gray-50">
-              <tr><th className="p-2 text-left">Material</th><th>Categoria</th><th>Stock movil</th><th>Origen</th><th>Cantidad</th><th></th></tr>
-            </thead>
-            <tbody>
-              {materialesConStock.map((material) => (
-                <tr key={material.id} className="border-t">
-                  <td className="p-2">{material.nombre}</td>
-                  <td className="p-2">{material.categoria}</td>
-                  <td className="p-2 font-semibold">{inventario[material.id] ?? 0}</td>
-                  <td className="p-2">
-                    <select
-                      value={origen[material.id] ?? 'deposito'}
-                      onChange={(e) => setOrigen((prev) => ({ ...prev, [material.id]: e.target.value as 'deposito' | 'compania' }))}
-                      className="px-2 py-1 border rounded"
-                    >
-                      <option value="deposito">Deposito</option>
-                      <option value="compania">Compania</option>
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={inventario[material.id] ?? 0}
-                      value={cantidad[material.id] ?? 0}
-                      onChange={(e) => setCantidad((prev) => ({ ...prev, [material.id]: Number(e.target.value) || 0 }))}
-                      className="w-24 px-2 py-1 border rounded"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <button onClick={() => cargarMaterial(material.id)} className="text-blue-600 text-xs">Registrar carga</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
+    <TransferToUbicacionView
+      titulo={vehiculo?.nombre || 'Movil'}
+      destinoTipo="movil"
+      destinoRef={movilId}
+      origenOpciones={['deposito', 'compania', 'externo']}
+      getStock={() => getInventarioMovil(movilId) as unknown as Promise<InventarioUbicacionItem[]>}
+    />
   )
 }
 function TransferToUbicacionView({
   titulo,
   destinoTipo,
+  destinoRef,
   origenOpciones,
   getStock,
 }: {
   titulo: string
-  destinoTipo: 'compania' | 'deposito'
+  destinoTipo: 'compania' | 'deposito' | 'movil'
+  destinoRef?: string | null
   origenOpciones: InventarioOrigenTipo[]
   getStock: () => Promise<InventarioUbicacionItem[]>
 }) {
   const [data, setData] = useState<InventarioUbicacionItem[]>([])
   const [stockDestino, setStockDestino] = useState<Record<string, number>>({})
-  const [stockOrigen, setStockOrigen] = useState<Record<string, number>>({})
+  const [stockOrigenes, setStockOrigenes] = useState<Partial<Record<InventarioOrigenTipo, Record<string, number>>>>({})
   const [moviles, setMoviles] = useState<Vehiculo[]>([])
   const [materialesEditables, setMaterialesEditables] = useState<Material[]>([])
   const [busqueda, setBusqueda] = useState('')
@@ -159,10 +69,12 @@ function TransferToUbicacionView({
 
   const load = async () => {
     const stockActual = await getStock()
-    const [movData, materialesAll, inventarioGeneral] = await Promise.all([
+    const [movData, materialesAll, inventarioGeneral, stockDeposito, stockCompania] = await Promise.all([
       getVehiculosDisponibles(),
       getMateriales(),
       getInventarioGlobal(),
+      getInventarioDeposito(),
+      getInventarioCompania(),
     ])
 
     const stockActualConValor = (stockActual || []).filter((i) => (i.cantidad ?? 0) > 0)
@@ -174,17 +86,15 @@ function TransferToUbicacionView({
     ) as Record<string, number>
     setStockDestino(destinoStock)
 
-    const stockReferencia =
-      destinoTipo === 'compania'
-        ? await getInventarioDeposito()
-        : await getInventarioCompania()
-
-    const stockOrigenMap = Object.fromEntries(
-      (stockReferencia || [])
+    const toStockMap = (items: InventarioUbicacionItem[]) => Object.fromEntries(
+      (items || [])
         .filter((item) => (item.cantidad ?? 0) > 0)
         .map((item) => [item.material_id, item.cantidad])
     ) as Record<string, number>
-    setStockOrigen(stockOrigenMap)
+    setStockOrigenes({
+      deposito: toStockMap(stockDeposito),
+      compania: toStockMap(stockCompania),
+    })
 
     const globalByMaterial = new Map<string, number>(
       ((inventarioGeneral as unknown as Array<{ material: string; total_general: number }>) || [])
@@ -216,7 +126,7 @@ function TransferToUbicacionView({
     setMotivo('')
     setStockMoviles({})
     load()
-  }, [destinoTipo, getStock])
+  }, [destinoTipo, destinoRef])
 
   const getMaxCantidad = (materialId: string) => {
     const origenTipo = origen[materialId] || origenOpciones[0]
@@ -226,7 +136,7 @@ function TransferToUbicacionView({
       if (!movilId) return 0
       return stockMoviles[movilId]?.[materialId] ?? 0
     }
-    return stockOrigen[materialId] || 0
+    return stockOrigenes[origenTipo]?.[materialId] || 0
   }
 
   const ensureStockMovil = async (movilId: string) => {
@@ -274,6 +184,7 @@ function TransferToUbicacionView({
       origen_tipo: origenTipo,
       origen_ref: origenRef,
       destino_tipo: destinoTipo,
+      destino_ref: destinoRef ?? null,
       motivo: motivo || `Movimiento hacia ${titulo}`,
       observacion: null,
     })
@@ -394,7 +305,9 @@ function TransferToUbicacionView({
                               className="px-2 py-1 border rounded-lg w-full"
                             >
                               <option value="">Movil origen</option>
-                              {moviles.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                              {moviles
+                                .filter((v) => v.id !== destinoRef)
+                                .map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
                             </select>
                           )}
                           <p className="text-xs text-gray-600">Disponible: {stockTexto}</p>
@@ -660,7 +573,7 @@ export default function Inventario() {
       ) : (
         <Routes>
           <Route path="movil" element={<Navigate to={firstMovilPath} replace />} />
-          <Route path="movil/:movilId" element={<InventarioMovilView />} />
+          <Route path="movil/:movilId" element={<InventarioMovilView vehiculos={vehiculos} />} />
           <Route path="global" element={<InventarioGlobalView />} />
           <Route path="compania" element={<TransferToUbicacionView titulo="Compania" destinoTipo="compania" origenOpciones={['deposito', 'movil', 'externo']} getStock={getInventarioCompania} />} />
           <Route path="deposito" element={<TransferToUbicacionView titulo="Deposito" destinoTipo="deposito" origenOpciones={['compania', 'movil', 'externo']} getStock={getInventarioDeposito} />} />
