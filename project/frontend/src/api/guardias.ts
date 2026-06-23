@@ -16,7 +16,7 @@ export const getGuardias = async (fecha?: string, fechaDesde?: string, fechaHast
 
 export const createGuardia = async (guardia: GuardiaCreate) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { miembros, ...guardiaData } = guardia
   const { data, error } = await (supabase as any)
@@ -44,7 +44,7 @@ export const createMultipleGuardias = async (guardias: GuardiaCreate[]) => {
 
 export const markAsistencia = async (asistencia: AsistenciaCreate) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { data, error } = await (supabase as any)
     .from('asistencia')
@@ -86,7 +86,7 @@ export const setGuardiaAttendanceOverride = async (
   estado: 'auto' | 'presente' | 'ausente',
 ) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const accion = `asistencia_guardia_manual_${estado}`
   const { data, error } = await (supabase as any)

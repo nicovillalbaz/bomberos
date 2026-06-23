@@ -75,13 +75,13 @@ export default function Salidas() {
   }
 
   const validate = (): string | null => {
-    if (!form.vehiculo_id) return 'Selecciona un vehiculo.'
+    if (!form.vehiculo_id) return 'Selecciona un vehículo.'
     if (!form.destino.trim()) return 'Destino es obligatorio.'
     if (!form.motivo.trim()) return 'Motivo es obligatorio.'
-    if (form.km_salida < 0 || form.km_llegada < 0) return 'Los kilometros no pueden ser negativos.'
+    if (form.km_salida < 0 || form.km_llegada < 0) return 'Los kilómetros no pueden ser negativos.'
     if (form.km_llegada < form.km_salida) return 'KM llegada debe ser mayor o igual a KM salida.'
     if (isRentado && !form.conductor_rentado_nombre.trim()) return 'Nombre de conductor rentado es obligatorio.'
-    if (isMotivoOtro && !form.motivo_descripcion.trim()) return 'Descripcion de motivo es obligatoria para motivo Otro.'
+    if (isMotivoOtro && !form.motivo_descripcion.trim()) return 'Descripción de motivo es obligatoria para motivo Otro.'
     if (form.hay_combustible) {
       const monto = Number(form.monto_combustible)
       if (!Number.isFinite(monto) || monto <= 0) return 'Monto de combustible debe ser mayor a 0.'
@@ -179,7 +179,7 @@ export default function Salidas() {
       km_salida: s.km_salida,
       km_llegada: s.km_llegada ?? '',
       observacion: s.observacion ?? '',
-      combustible: s.hay_combustible ? 'Si' : 'No',
+      combustible: s.hay_combustible ? 'Sí' : 'No',
       oficial_autorizante: s.hay_combustible ? `${s.autorizacion?.nombre ?? ''} ${s.autorizacion?.apellido ?? ''}`.trim() : '',
     }))
     return { rows, monthValue }
@@ -230,11 +230,11 @@ export default function Salidas() {
         <div className="surface p-4">
           <div className="mb-4">
             <h2 className="text-base font-semibold text-gray-900">{editing ? 'Editar salida' : 'Nueva salida'}</h2>
-            <p className="text-sm text-gray-500">Carga movil, conductor, kilometros y combustible en un solo paso.</p>
+            <p className="text-sm text-gray-500">Cargá móvil, conductor, kilómetros y combustible en un solo paso.</p>
           </div>
           <form onSubmit={editing ? handleUpdate : handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <select required value={form.vehiculo_id} onChange={(e) => handleVehiculoChange(e.target.value)} className="px-3 py-2 border rounded-lg">
-              <option value="">Seleccionar vehiculo</option>
+              <option value="">Seleccionar vehículo</option>
               {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre} - {v.dominio}</option>)}
             </select>
 
@@ -252,22 +252,22 @@ export default function Salidas() {
             <input required placeholder="Motivo" value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} className="px-3 py-2 border rounded-lg" />
 
             {isMotivoOtro && (
-              <input required placeholder="Descripcion del motivo" value={form.motivo_descripcion} onChange={(e) => setForm({ ...form, motivo_descripcion: e.target.value })} className="px-3 py-2 border rounded-lg" />
+              <input required placeholder="Descripción del motivo" value={form.motivo_descripcion} onChange={(e) => setForm({ ...form, motivo_descripcion: e.target.value })} className="px-3 py-2 border rounded-lg" />
             )}
 
             <input required type="number" min={0} placeholder="KM salida" value={form.km_salida || ''} onChange={(e) => setForm({ ...form, km_salida: Number(e.target.value) })} className="px-3 py-2 border rounded-lg" />
             <input required type="number" min={form.km_salida} placeholder="KM llegada" value={form.km_llegada || ''} onChange={(e) => setForm({ ...form, km_llegada: Number(e.target.value) })} className="px-3 py-2 border rounded-lg" />
-            <input disabled value={selectedVehiculo?.nombre ?? ''} placeholder="Movil" className="px-3 py-2 border rounded-lg bg-gray-100" />
+            <input disabled value={selectedVehiculo?.nombre ?? ''} placeholder="Móvil" className="px-3 py-2 border rounded-lg bg-gray-100" />
 
-            <textarea placeholder="Observacion" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} className="sm:col-span-2 px-3 py-2 border rounded-lg" />
+            <textarea placeholder="Observación" value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })} className="sm:col-span-2 px-3 py-2 border rounded-lg" />
 
-            <label className="sm:col-span-2 flex items-center gap-2"><input type="checkbox" checked={form.hay_combustible} onChange={(e) => setForm({ ...form, hay_combustible: e.target.checked })} /> Se cargo combustible</label>
+            <label className="sm:col-span-2 flex items-center gap-2"><input type="checkbox" checked={form.hay_combustible} onChange={(e) => setForm({ ...form, hay_combustible: e.target.checked })} /> Se cargó combustible</label>
             {form.hay_combustible && (
               <input required type="number" min={1} placeholder="Monto combustible" value={form.monto_combustible} onChange={(e) => setForm({ ...form, monto_combustible: e.target.value })} className="px-3 py-2 border rounded-lg" />
             )}
 
             <select value={form.autorizacion_id} onChange={(e) => setForm({ ...form, autorizacion_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Sin autorizacion</option>
+              <option value="">Sin autorización</option>
               {oficiales.map((o) => <option key={o.id} value={o.id}>{o.nombre} {o.apellido}</option>)}
             </select>
 
@@ -284,7 +284,7 @@ export default function Salidas() {
         <table className="w-full text-sm min-w-[980px]">
           <thead className="bg-gray-50">
             <tr>
-              <th className="p-2 text-left">Fecha</th><th>Vehiculo</th><th>Conductor</th><th>Destino</th><th>KM salida</th><th>KM llegada</th><th>Observacion</th><th>Combustible</th><th>Oficial autorizante</th><th></th>
+              <th className="p-2 text-left">Fecha</th><th>Vehículo</th><th>Conductor</th><th>Destino</th><th>KM salida</th><th>KM llegada</th><th>Observación</th><th>Combustible</th><th>Oficial autorizante</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -297,7 +297,7 @@ export default function Salidas() {
                 <td className="p-2">{s.km_salida}</td>
                 <td className="p-2">{s.km_llegada ?? '-'}</td>
                 <td className="p-2">{s.observacion ?? '-'}</td>
-                <td className="p-2">{s.hay_combustible ? 'Si' : 'No'}</td>
+                <td className="p-2">{s.hay_combustible ? 'Sí' : 'No'}</td>
                 <td className="p-2">{s.autorizacion ? `${s.autorizacion.nombre} ${s.autorizacion.apellido}` : '-'}</td>
                 <td className="p-2"><button onClick={() => startEdit(s)} className="text-primary-700 text-xs">Editar</button></td>
               </tr>

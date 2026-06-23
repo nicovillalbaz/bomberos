@@ -13,7 +13,7 @@ export const getNovedades = async (limit = 50) => {
 
 export const createNovedadManual = async (novedad: { tipo: string; titulo: string; descripcion: string; modulo_origen?: string }) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { data, error } = await (supabase as any)
     .from('novedades_global')
@@ -34,14 +34,14 @@ export const createNovedadManual = async (novedad: { tipo: string; titulo: strin
 
 export const createNovedadIngresoRetiroCompania = async (accion: 'ingreso' | 'retiro') => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
   const actor = getSessionProfile()
   const actorLabel = actor ? `${actor.nombre} ${actor.apellido}` : 'Usuario'
   const ahora = new Date()
-  const titulo = accion === 'ingreso' ? 'Ingrese en la compania' : 'Me retiro de la compania'
+  const titulo = accion === 'ingreso' ? 'Ingresé en la compañía' : 'Me retiro de la compañía'
   const descripcion = accion === 'ingreso'
-    ? `${actorLabel} se registro el ingreso a la compania.`
-    : `${actorLabel} se registro el retiro de la compania.`
+    ? `${actorLabel} se registró el ingreso a la compañía.`
+    : `${actorLabel} se registró el retiro de la compañía.`
 
   const { data, error } = await (supabase as any)
     .from('novedades_global')

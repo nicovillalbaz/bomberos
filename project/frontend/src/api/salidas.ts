@@ -39,7 +39,7 @@ export const getLastSalidaByVehiculo = async (vehiculoId: string) => {
 
 export const createSalida = async (salida: SalidaCreate) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { data, error } = await (supabase as any)
     .from('salidas')

@@ -26,7 +26,7 @@ function InventarioMovilView({ vehiculos }: { vehiculos: Vehiculo[] }) {
 
   return (
     <TransferToUbicacionView
-      titulo={vehiculo?.nombre || 'Movil'}
+      titulo={vehiculo?.nombre || 'Móvil'}
       destinoTipo="movil"
       destinoRef={movilId}
       origenOpciones={['deposito', 'compania', 'externo']}
@@ -61,9 +61,9 @@ function TransferToUbicacionView({
   const [stockMoviles, setStockMoviles] = useState<Record<string, Record<string, number>>>({})
 
   const labelMap: Record<InventarioOrigenTipo, string> = {
-    deposito: 'Deposito',
-    compania: 'Compania',
-    movil: 'Movil',
+    deposito: 'Depósito',
+    compania: 'Compañía',
+    movil: 'Móvil',
     externo: 'Externo',
   }
 
@@ -217,7 +217,7 @@ function TransferToUbicacionView({
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-2 text-left">Material</th>
-                <th className="p-2">Categoria</th>
+                <th className="p-2">Categoría</th>
                 <th className="p-2">Stock en {titulo}</th>
               </tr>
             </thead>
@@ -255,7 +255,7 @@ function TransferToUbicacionView({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="p-2 text-left">Material</th>
-                  <th className="p-2">Categoria</th>
+                  <th className="p-2">Categoría</th>
                   <th className="p-2">Stock en {titulo}</th>
                   <th className="p-2">Origen</th>
                   <th className="p-2">Cant</th>
@@ -304,7 +304,7 @@ function TransferToUbicacionView({
                               }}
                               className="px-2 py-1 border rounded-lg w-full"
                             >
-                              <option value="">Movil origen</option>
+                              <option value="">Móvil origen</option>
                               {moviles
                                 .filter((v) => v.id !== destinoRef)
                                 .map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
@@ -369,7 +369,7 @@ function InventarioGlobalView() {
   return (
     <div className="surface overflow-auto">
       <table className="w-full text-sm min-w-[700px]">
-        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoria</th><th>Moviles</th><th>Compania</th><th>Deposito</th><th>Total</th></tr></thead>
+        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Móviles</th><th>Compañía</th><th>Depósito</th><th>Total</th></tr></thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i} className="border-t">
@@ -417,7 +417,7 @@ function AjustesMovimientosView() {
       origen_ref: origenTipo === 'movil' ? origenMovilId : null,
       destino_tipo: destinoTipo,
       destino_ref: destinoTipo === 'movil' ? destinoMovilId : null,
-      motivo: motivo || (origenTipo === 'externo' ? 'Donacion/ingreso externo' : 'Ajuste de inventario'),
+      motivo: motivo || (origenTipo === 'externo' ? 'Donación/ingreso externo' : 'Ajuste de inventario'),
       observacion: observacion || null,
     })
 
@@ -434,36 +434,36 @@ function AjustesMovimientosView() {
           {materiales.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
         </select>
         <select value={origenTipo} onChange={(e) => setOrigenTipo(e.target.value as any)} className="px-3 py-2 border rounded-lg">
-          <option value="deposito">Origen: Deposito</option>
-          <option value="compania">Origen: Compania</option>
-          <option value="movil">Origen: Movil</option>
-          <option value="externo">Origen: Externo (donacion)</option>
+          <option value="deposito">Origen: Depósito</option>
+          <option value="compania">Origen: Compañía</option>
+          <option value="movil">Origen: Móvil</option>
+          <option value="externo">Origen: Externo (donación)</option>
         </select>
         <select value={destinoTipo} onChange={(e) => setDestinoTipo(e.target.value as any)} className="px-3 py-2 border rounded-lg">
-          <option value="deposito">Destino: Deposito</option>
-          <option value="compania">Destino: Compania</option>
-          <option value="movil">Destino: Movil</option>
+          <option value="deposito">Destino: Depósito</option>
+          <option value="compania">Destino: Compañía</option>
+          <option value="movil">Destino: Móvil</option>
           <option value="consumo">Destino: Consumo</option>
           <option value="baja">Destino: Baja/Descarte</option>
         </select>
         {origenTipo === 'movil' && (
           <select required value={origenMovilId} onChange={(e) => setOrigenMovilId(e.target.value)} className="px-3 py-2 border rounded-lg">
-            <option value="">Movil origen</option>
+            <option value="">Móvil origen</option>
             {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
           </select>
         )}
         {destinoTipo === 'movil' && (
           <select required value={destinoMovilId} onChange={(e) => setDestinoMovilId(e.target.value)} className="px-3 py-2 border rounded-lg">
-            <option value="">Movil destino</option>
+            <option value="">Móvil destino</option>
             {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
           </select>
         )}
         <input type="number" min={1} value={cantidad} onChange={(e) => setCantidad(Number(e.target.value) || 1)} className="px-3 py-2 border rounded-lg" />
-        <input placeholder="Motivo (ej: rotura, descarte, donacion)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="px-3 py-2 border rounded-lg" />
-        <input placeholder="Observacion" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="sm:col-span-3 px-3 py-2 border rounded-lg" />
+        <input placeholder="Motivo (ej: rotura, descarte, donación)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="px-3 py-2 border rounded-lg" />
+        <input placeholder="Observación" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="sm:col-span-3 px-3 py-2 border rounded-lg" />
         <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Registrar movimiento</button>
       </form>
-      <p className="text-sm text-gray-600">Usa este formulario para registrar donaciones (origen externo) y bajas por rotura/descarte (destino baja o consumo).</p>
+      <p className="text-sm text-gray-600">Usá este formulario para registrar donaciónes (origen externo) y bajas por rotura/descarte (destino baja o consumo).</p>
     </div>
   )
 }
@@ -502,9 +502,9 @@ function HistorialMovimientosView() {
         </select>
         <select value={filtros.ubicacion} onChange={(e) => setFiltros((prev) => ({ ...prev, ubicacion: e.target.value }))} className="px-3 py-2 border rounded-lg">
           <option value="">Todas las ubicaciones</option>
-          <option value="deposito">Deposito</option>
-          <option value="compania">Compania</option>
-          <option value="movil">Movil</option>
+          <option value="deposito">Depósito</option>
+          <option value="compania">Compañía</option>
+          <option value="movil">Móvil</option>
         </select>
         <input type="date" value={filtros.fecha_desde} onChange={(e) => setFiltros((prev) => ({ ...prev, fecha_desde: e.target.value }))} className="px-3 py-2 border rounded-lg" />
         <input type="date" value={filtros.fecha_hasta} onChange={(e) => setFiltros((prev) => ({ ...prev, fecha_hasta: e.target.value }))} className="px-3 py-2 border rounded-lg" />
@@ -563,8 +563,8 @@ export default function Inventario() {
           </NavLink>
         ))}
         <NavLink to="/inventario/global" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Global</NavLink>
-        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compania</NavLink>
-        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Deposito</NavLink>
+        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compañía</NavLink>
+        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Depósito</NavLink>
         <NavLink to="/inventario/ajustes" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Ajustes</NavLink>
         <NavLink to="/inventario/historial" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Historial</NavLink>
       </div>
@@ -575,8 +575,8 @@ export default function Inventario() {
           <Route path="movil" element={<Navigate to={firstMovilPath} replace />} />
           <Route path="movil/:movilId" element={<InventarioMovilView vehiculos={vehiculos} />} />
           <Route path="global" element={<InventarioGlobalView />} />
-          <Route path="compania" element={<TransferToUbicacionView titulo="Compania" destinoTipo="compania" origenOpciones={['deposito', 'movil', 'externo']} getStock={getInventarioCompania} />} />
-          <Route path="deposito" element={<TransferToUbicacionView titulo="Deposito" destinoTipo="deposito" origenOpciones={['compania', 'movil', 'externo']} getStock={getInventarioDeposito} />} />
+          <Route path="compania" element={<TransferToUbicacionView titulo="Compañía" destinoTipo="compania" origenOpciones={['deposito', 'movil', 'externo']} getStock={getInventarioCompania} />} />
+          <Route path="deposito" element={<TransferToUbicacionView titulo="Depósito" destinoTipo="deposito" origenOpciones={['compania', 'movil', 'externo']} getStock={getInventarioDeposito} />} />
           <Route path="ajustes" element={<AjustesMovimientosView />} />
           <Route path="historial" element={<HistorialMovimientosView />} />
           <Route path="*" element={<Navigate to={firstMovilPath} replace />} />

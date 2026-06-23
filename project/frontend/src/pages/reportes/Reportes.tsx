@@ -264,7 +264,7 @@ export default function Reportes() {
   const handleExport = () => {
     const rows = activeTab === 'porcentajes' ? buildPercentageExportRows() : buildServiceExportRows()
     if (rows.length === 0) {
-      setError('No hay datos para exportar en esta pestana.')
+      setError('No hay datos para exportar en esta pestaña.')
       return
     }
     const filename = activeTab === 'porcentajes' ? `porcentajes_${month}` : `servicios_${month}`
@@ -281,7 +281,7 @@ export default function Reportes() {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">Reportes</h1>
         <div className="surface p-4 text-sm text-gray-600">
-          Esta seccion esta disponible para oficiales y administradores.
+          Esta sección está disponible para oficiales y administradores.
         </div>
       </div>
     )
@@ -352,14 +352,14 @@ export default function Reportes() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-2 text-left">Voluntario</th>
-                <th className="p-2 text-left">Codigo</th>
-                <th className="p-2 text-left">Categoria</th>
+                <th className="p-2 text-left">Código</th>
+                <th className="p-2 text-left">Categoría</th>
                 <th className="p-2 text-left">Guardias</th>
                 <th className="p-2 text-left">% Guardias</th>
                 <th className="p-2 text-left">Citaciones</th>
                 <th className="p-2 text-left">% Citaciones</th>
-                <th className="p-2 text-left">Practicas</th>
-                <th className="p-2 text-left">% Practicas</th>
+                <th className="p-2 text-left">Prácticas</th>
+                <th className="p-2 text-left">% Prácticas</th>
                 <th className="p-2 text-left">% Total</th>
               </tr>
             </thead>

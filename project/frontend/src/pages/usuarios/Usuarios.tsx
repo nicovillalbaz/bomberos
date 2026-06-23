@@ -63,7 +63,7 @@ export default function Usuarios() {
             <input required placeholder="Apellido" value={form.apellido} onChange={e => setForm({ ...form, apellido: e.target.value })} className="px-3 py-2 border rounded-lg" />
             {!editing && <input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="px-3 py-2 border rounded-lg" />}
             {!editing && <input required type="password" placeholder="Password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="px-3 py-2 border rounded-lg" />}
-            <input placeholder="Codigo Interno" value={form.codigo_interno} onChange={e => setForm({ ...form, codigo_interno: e.target.value })} className="px-3 py-2 border rounded-lg" />
+            <input placeholder="Código Interno" value={form.codigo_interno} onChange={e => setForm({ ...form, codigo_interno: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <select value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value as RolUsuario })} className="px-3 py-2 border rounded-lg">
               <option value="bombero">Bombero</option><option value="oficial">Oficial</option><option value="admin">Admin</option>
             </select>

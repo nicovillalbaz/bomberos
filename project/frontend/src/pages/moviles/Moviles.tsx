@@ -29,13 +29,13 @@ export default function Moviles() {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('Eliminar vehculo?')) { await deleteVehiculo(id); load() }
+    if (confirm('¿Eliminar vehículo?')) { await deleteVehiculo(id); load() }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Mviles</h1>
+        <h1 className="text-2xl font-bold">Móviles</h1>
         <button onClick={() => { setEditing(null); setForm({ nombre: '', dominio: '', marca: '', modelo: '', anio: 0, tipo: 'camion', estado: 'disponible' }); setShowForm(true) }} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Nuevo</button>
       </div>
       {showForm && (
@@ -45,9 +45,9 @@ export default function Moviles() {
             <input placeholder="Dominio" value={form.dominio} onChange={e => setForm({ ...form, dominio: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <input placeholder="Marca" value={form.marca} onChange={e => setForm({ ...form, marca: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <input placeholder="Modelo" value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} className="px-3 py-2 border rounded-lg" />
-            <input type="number" placeholder="Ao" value={form.anio || ''} onChange={e => setForm({ ...form, anio: Number(e.target.value) })} className="px-3 py-2 border rounded-lg" />
+            <input type="number" placeholder="Año" value={form.anio || ''} onChange={e => setForm({ ...form, anio: Number(e.target.value) })} className="px-3 py-2 border rounded-lg" />
             <select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value as TipoVehiculo })} className="px-3 py-2 border rounded-lg">
-              <option value="camion">Camin</option><option value="ambulancia">Ambulancia</option><option value="unidad_apoyo">Unidad apoyo</option><option value="otro">Otro</option>
+              <option value="camion">Camión</option><option value="ambulancia">Ambulancia</option><option value="unidad_apoyo">Unidad apoyo</option><option value="otro">Otro</option>
             </select>
             <select value={form.estado} onChange={e => setForm({ ...form, estado: e.target.value as EstadoVehiculo })} className="px-3 py-2 border rounded-lg">
               <option value="disponible">Disponible</option><option value="en_salida">En salida</option><option value="en_mantenimiento">En mantenimiento</option><option value="fuera_servicio">Fuera de servicio</option>

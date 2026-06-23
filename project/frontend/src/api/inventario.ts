@@ -63,7 +63,7 @@ export const transferirInventario = async (input: {
   observacion?: string | null
 }) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { data, error } = await (supabase as any).rpc('transferir_inventario', {
     p_material_id: input.material_id,

@@ -188,7 +188,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
               </label>
             </div>
             <textarea
-              placeholder="Descripcion (opcional)"
+              placeholder="Descripción (opcional)"
               value={form.descripcion}
               onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg"
@@ -310,6 +310,6 @@ export function Citaciones() {
 }
 
 export function Practicas() {
-  return <CitacionesBase tipo="practica" titulo="Practicas" />
+  return <CitacionesBase tipo="practica" titulo="Prácticas" />
 }
 

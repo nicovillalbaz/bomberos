@@ -119,7 +119,7 @@ export default function MisActividades() {
       titulo: getServicioTitulo(servicio),
       detalle: [
         servicio.lugar ? `Lugar: ${servicio.lugar}` : '',
-        servicio.movil?.nombre ? `Movil: ${servicio.movil.nombre}` : '',
+        servicio.movil?.nombre ? `Móvil: ${servicio.movil.nombre}` : '',
         servicio.descripcion || '',
       ].filter(Boolean).join(' | ') || 'Actividad asignada',
       estado: servicio.estado,
@@ -173,7 +173,7 @@ export default function MisActividades() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="surface p-4"><p className="text-sm text-gray-500">Guardias</p><p className="text-2xl font-bold">{totals.guardias}</p></div>
         <div className="surface p-4"><p className="text-sm text-gray-500">Citaciones</p><p className="text-2xl font-bold">{totals.citaciones}</p></div>
-        <div className="surface p-4"><p className="text-sm text-gray-500">Practicas</p><p className="text-2xl font-bold">{totals.practicas}</p></div>
+        <div className="surface p-4"><p className="text-sm text-gray-500">Prácticas</p><p className="text-2xl font-bold">{totals.practicas}</p></div>
         <div className="surface p-4"><p className="text-sm text-gray-500">Servicios</p><p className="text-2xl font-bold">{totals.servicios}</p></div>
       </div>
 

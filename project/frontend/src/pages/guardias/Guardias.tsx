@@ -450,7 +450,7 @@ export default function Guardias() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="p-2 text-left">Persona</th>
-                  <th className="p-2">Automatico por ingreso</th>
+                  <th className="p-2">Automático por ingreso</th>
                   <th className="p-2">Ajuste manual</th>
                   <th className="p-2">Resultado</th>
                 </tr>
@@ -473,14 +473,14 @@ export default function Guardias() {
                           }))}
                           className="px-3 py-2 border rounded-lg"
                         >
-                          <option value="auto">Automatico</option>
+                          <option value="auto">Automático</option>
                           <option value="presente">Presente</option>
                           <option value="ausente">Ausente</option>
                         </select>
                       </td>
                       <td className="p-2 text-center">
                         <span className={`px-2 py-1 rounded text-xs ${resultado ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
-                          {resultado ? 'Asistio' : 'No asistio'}
+                          {resultado ? 'Asistió' : 'No asistió'}
                         </span>
                       </td>
                     </tr>

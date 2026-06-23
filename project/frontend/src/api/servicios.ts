@@ -65,7 +65,7 @@ export const getServiciosByFilters = async (filtros?: {
 
 export const createServicio = async (servicio: ServicioCreate) => {
   const actorId = getSessionUserId()
-  if (!actorId) throw new Error('No hay sesion activa')
+  if (!actorId) throw new Error('No hay sesión activa')
 
   const { personal, ...servicioData } = servicio
   const { data, error } = await (supabase as any)
