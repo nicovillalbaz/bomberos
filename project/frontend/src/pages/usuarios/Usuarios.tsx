@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPerfil, getPerfiles, toggleUserStatus, updatePerfil } from '../../api/usuarios'
 import type { Perfil, RolUsuario } from '../../types'
 
@@ -57,7 +57,7 @@ export default function Usuarios() {
     <div className="space-y-4">
       <div className="flex justify-between"><h1 className="text-2xl font-bold">Usuarios</h1><button onClick={() => { setEditing(null); setShowForm(true) }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo Usuario</button></div>
       {showForm && (
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <input required placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <input required placeholder="Apellido" value={form.apellido} onChange={e => setForm({ ...form, apellido: e.target.value })} className="px-3 py-2 border rounded-lg" />
@@ -73,7 +73,7 @@ export default function Usuarios() {
           </form>
         </div>
       )}
-      <div className="bg-white rounded-lg shadow overflow-auto">
+      <div className="surface overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50"><tr><th className="p-2 text-left">Nombre</th><th>Apellido</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
           <tbody>{usuarios.map(u => (

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { loginWithPassword } from '../../lib/supabase'
@@ -36,9 +36,12 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6">Cuartel de Bomberos</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="surface p-6 sm:p-8 w-full max-w-md">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">Cuartel de Bomberos</h1>
+          <p className="text-sm text-gray-500">Ingresá con tu usuario para continuar.</p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>

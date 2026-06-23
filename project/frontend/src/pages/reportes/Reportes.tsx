@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getReporteServicios, getReporteSalidas, getReporteInventarioGlobal, exportToCSV } from '../../api/reportes'
 
 const modulos = [
@@ -33,9 +33,9 @@ export default function Reportes() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Reportes</h1>
-      <div className="bg-white p-4 rounded-lg shadow space-y-4">
+      <div className="surface p-4 space-y-4">
         <div className="flex gap-4 items-end">
-          <div><label className="text-sm">Módulo</label>
+          <div><label className="text-sm">M�dulo</label>
             <select value={modulo} onChange={e=>setModulo(e.target.value)} className="px-3 py-2 border rounded-lg">
               {modulos.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
@@ -47,7 +47,7 @@ export default function Reportes() {
         </div>
       </div>
       {loading ? <p>Cargando...</p> : (
-        <div className="bg-white rounded-lg shadow overflow-auto">
+        <div className="surface overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr>{data.length>0 && Object.keys(data[0]).map(k=><th key={k} className="p-2 text-left">{k}</th>)}</tr></thead>
             <tbody>{data.map((r,i)=><tr key={i} className="border-t">{Object.values(r).map((v:any,j)=><td key={j} className="p-2">{String(v||'')}</td>)}</tr>)}</tbody>

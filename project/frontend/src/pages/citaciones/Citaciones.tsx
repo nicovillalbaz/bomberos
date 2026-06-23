@@ -139,7 +139,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
         <input
           type="date"
           value={fechaDesde}
@@ -164,7 +164,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
       </div>
 
       {showForm && (
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <form onSubmit={crearEvento} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 text-sm">
@@ -213,7 +213,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-auto">
+      <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead className="bg-gray-50">
             <tr>
@@ -250,7 +250,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
       </div>
 
       {detalleOpen && detalle && (
-        <div className="bg-white rounded-lg shadow p-4 space-y-4">
+        <div className="surface p-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
             <div>
               <p className="text-sm text-gray-500">Detalle</p>

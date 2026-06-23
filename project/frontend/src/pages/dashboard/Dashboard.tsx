@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Guardia, NovedadGlobal, Servicio, Vehiculo } from '../../types'
+import type { Guardia, NovedadGlobal, Perfil, Servicio, Vehiculo } from '../../types'
 import { supabase } from '../../lib/supabase'
-import { createNovedadIngresoRetiroCompania, getNovedades } from '../../api/novedades'
+import { createNovedadIngresoRetiroCompania, getCompanyPresenceEvents, getNovedades } from '../../api/novedades'
 import { getServicioById } from '../../api/servicios'
 import { useAuth } from '../../hooks/useAuth'
+import { isPresenceEntry } from '../../lib/attendance'
 
 const quickLinks = [
   { to: '/salidas', label: 'Salidas', icon: '📤' },
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [servicioResumen, setServicioResumen] = useState<Record<string, string>>({})
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [guardiaHoy, setGuardiaHoy] = useState<Guardia[]>([])
+  const [presentes, setPresentes] = useState<Perfil[]>([])
   const [loading, setLoading] = useState(true)
   const [enCompania, setEnCompania] = useState(false)
   const [feedback, setFeedback] = useState('')
@@ -42,10 +44,11 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       const hoy = new Date().toISOString().split('T')[0]
-      const [nov, veh, guardias] = await Promise.all([
+      const [nov, veh, guardias, presencia] = await Promise.all([
         getNovedades(limiteNovedades),
         supabase.from('vehiculos').select('*').eq('estado', 'disponible'),
         supabase.from('guardias').select('*, a_cargo:perfiles!a_cargo_id(nombre,apellido), conductor:perfiles!conductor_id(nombre,apellido)').eq('fecha', hoy),
+        getCompanyPresenceEvents(),
       ])
 
       setNovedades(nov)
@@ -74,6 +77,13 @@ export default function Dashboard() {
       }
       setVehiculos((veh as any).data || [])
       setGuardiaHoy((guardias as any).data || [])
+      const latestByUser = new Map<string, typeof presencia[number]>()
+      presencia.forEach((event) => latestByUser.set(event.usuario_id, event))
+      const presentesData = Array.from(latestByUser.values())
+        .filter((event) => event.usuario && isPresenceEntry(event))
+        .map((event) => event.usuario as Perfil)
+        .sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`))
+      setPresentes(presentesData)
     } catch (err) {
       console.error(err)
     } finally {
@@ -142,30 +152,39 @@ export default function Dashboard() {
   if (loading) return <div className="text-center py-8">Cargando...</div>
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="space-y-5">
+      <div className="page-heading">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-gray-500">Resumen rapido del cuartel y accesos de carga.</p>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="surface p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {quickLinks.map((item) => (
-          <Link key={item.to} to={item.to} className="bg-white rounded-xl shadow p-4 text-center hover:bg-gray-50">
-            <div className="text-2xl">{item.icon}</div>
-            <p className="text-sm font-medium mt-1">{item.label}</p>
+          <Link key={item.to} to={item.to} className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
+            <span className="mr-2">{item.icon}</span>
+            <span>{item.label}</span>
           </Link>
         ))}
       </div>
 
-      <div className="space-y-2">
+      <div className="surface p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Estado personal en compania</p>
+          <p className="text-sm text-gray-500">{enCompania ? 'Figuras con ingreso abierto.' : 'No figuras dentro de la compania.'}</p>
+        </div>
         {!enCompania ? (
           <button
             onClick={() => registrar('ingreso')}
-            className="w-full sm:w-auto px-4 py-3 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
           >
             Ingreso en la compañía
           </button>
         ) : (
           <button
             onClick={() => registrar('retiro')}
-            className="w-full sm:w-auto px-4 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
           >
             Retiro de la compañía
           </button>
@@ -178,22 +197,40 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <p className="text-sm text-gray-500">Vehículos disponibles</p>
           <p className="text-3xl font-bold text-green-600">{vehiculos.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <p className="text-sm text-gray-500">Guardias hoy</p>
           <p className="text-3xl font-bold text-blue-600">{guardiaHoy.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <p className="text-sm text-gray-500">Novedades recientes</p>
           <p className="text-3xl font-bold text-amber-600">{novedades.length}</p>
         </div>
       </div>
 
+      <div className="surface p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold">En la compania ahora</h2>
+          <span className="text-sm text-gray-500">{presentes.length} persona{presentes.length === 1 ? '' : 's'}</span>
+        </div>
+        {presentes.length === 0 ? (
+          <p className="mt-3 text-gray-500">Nadie figura con ingreso abierto.</p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {presentes.map((persona) => (
+              <span key={persona.id} className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700">
+                {persona.nombre} {persona.apellido}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <h2 className="text-lg font-semibold mb-3">Guardias de hoy</h2>
           {guardiaHoy.length === 0 ? <p className="text-gray-500">No hay guardias programadas</p> :
             guardiaHoy.map((g) => (
@@ -204,7 +241,7 @@ export default function Dashboard() {
             ))
           }
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <h2 className="text-lg font-semibold mb-3">Últimas novedades</h2>
           {novedades.length === 0 ? <p className="text-gray-500">No hay novedades</p> :
             novedades.map((n) => (

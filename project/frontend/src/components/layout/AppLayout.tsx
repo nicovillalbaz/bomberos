@@ -14,11 +14,11 @@ const mobileLinks = [
 
 export default function AppLayout() {
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="app-shell min-h-screen flex">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 p-4 sm:p-6 bg-gray-50 overflow-auto pb-24 md:pb-6">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto pb-24 md:pb-6">
           <Outlet />
         </main>
 
@@ -27,9 +27,9 @@ export default function AppLayout() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `py-2 text-center text-xs ${isActive ? 'text-primary-700' : 'text-gray-500'}`}
+              className={({ isActive }) => `py-2 text-center text-[11px] ${isActive ? 'text-red-800 font-semibold' : 'text-gray-500'}`}
             >
-              <div>{item.icon}</div>
+              <div className="text-sm">{item.icon}</div>
               <div>{item.label}</div>
             </NavLink>
           ))}

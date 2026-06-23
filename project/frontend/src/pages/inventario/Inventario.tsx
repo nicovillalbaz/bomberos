@@ -72,7 +72,7 @@ function InventarioMovilView() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-lg shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 surface p-3">
         <select value={selected} onChange={(e) => loadInventario(e.target.value)} className="px-3 py-2 border rounded-lg">
           <option value="">Seleccionar móvil</option>
           {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
@@ -82,7 +82,7 @@ function InventarioMovilView() {
       </div>
 
       {selected && (
-        <div className="bg-white rounded-lg shadow overflow-auto">
+        <div className="surface overflow-auto">
           {materialesConStock.length === 0 ? (
             <p className="p-4 text-gray-500">No hay stock cargado en este móvil.</p>
           ) : (
@@ -305,7 +305,7 @@ function TransferToUbicacionView({
       </div>
 
       {!editando ? (
-        <div className="bg-white rounded-lg shadow overflow-auto">
+        <div className="surface overflow-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-gray-50">
               <tr>
@@ -329,7 +329,7 @@ function TransferToUbicacionView({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="bg-white rounded-lg shadow p-3 flex gap-3 flex-wrap items-center">
+          <div className="surface p-3 flex gap-3 flex-wrap items-center">
             <input
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
@@ -343,7 +343,7 @@ function TransferToUbicacionView({
               className="px-3 py-2 border rounded-lg flex-1 min-w-[200px]"
             />
           </div>
-          <div className="bg-white rounded-lg shadow overflow-auto">
+          <div className="surface overflow-auto">
             <table className="w-full text-sm min-w-[980px]">
               <thead className="bg-gray-50">
                 <tr>
@@ -458,7 +458,7 @@ function InventarioGlobalView() {
   const [data, setData] = useState<Array<Record<string, unknown>>>([])
   useEffect(() => { getInventarioGlobal().then((v) => setData((v || []).filter((r: any) => Number(r.total_general ?? 0) > 0)) ) }, [])
   return (
-    <div className="bg-white rounded-lg shadow overflow-auto">
+    <div className="surface overflow-auto">
       <table className="w-full text-sm min-w-[700px]">
         <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Móviles</th><th>Compañía</th><th>Depósito</th><th>Total</th></tr></thead>
         <tbody>
@@ -519,7 +519,7 @@ function AjustesMovimientosView() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={registrar} className="bg-white p-4 rounded-lg shadow grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <form onSubmit={registrar} className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <select required value={materialId} onChange={(e) => setMaterialId(e.target.value)} className="px-3 py-2 border rounded-lg">
           <option value="">Material</option>
           {materiales.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
@@ -586,7 +586,7 @@ function HistorialMovimientosView() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 sm:grid-cols-5 gap-3">
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-5 gap-3">
         <select value={filtros.material_id} onChange={(e) => setFiltros((prev) => ({ ...prev, material_id: e.target.value }))} className="px-3 py-2 border rounded-lg">
           <option value="">Todos los materiales</option>
           {materiales.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
@@ -606,7 +606,7 @@ function HistorialMovimientosView() {
         <button onClick={load} className="sm:col-span-5 px-4 py-2 bg-primary-600 text-white rounded-lg">Filtrar historial</button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-auto">
+      <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[980px]">
           <thead className="bg-gray-50"><tr><th className="p-2 text-left">Fecha</th><th>Material</th><th>Cantidad</th><th>Origen</th><th>Destino</th><th>Motivo</th><th>Usuario</th></tr></thead>
           <tbody>

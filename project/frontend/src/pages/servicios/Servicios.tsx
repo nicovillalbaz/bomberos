@@ -4,6 +4,7 @@ import { createServicio, getMotivosSalidaServicio, getServiciosByDateRange, upda
 import { getActiveProfiles } from '../../api/usuarios'
 import { getVehiculosDisponibles } from '../../api/vehiculos'
 import { exportRowsToCSV } from '../../lib/export'
+import { formatDateOnly, getMonthRange, toDateInputValue, toMonthInputValue } from '../../lib/datetime'
 
 export default function Servicios() {
   const [servicios, setServicios] = useState<Servicio[]>([])
@@ -14,6 +15,7 @@ export default function Servicios() {
   const [motivos, setMotivos] = useState<Array<{ id: string; nombre: string }>>([])
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  const [mesSeleccionado, setMesSeleccionado] = useState(toMonthInputValue())
   const [miembroSearch, setMiembroSearch] = useState('')
   const [form, setForm] = useState({
     fecha: '',
@@ -95,7 +97,22 @@ export default function Servicios() {
   }, [servicios])
 
   const exportResumenCSV = () => {
-    exportRowsToCSV(resumen, `resumen_servicios_${new Date().toISOString().split('T')[0]}.csv`)
+    exportRowsToCSV(resumen, `resumen_servicios_${toDateInputValue()}.csv`)
+  }
+
+  const exportServiciosMesCSV = async () => {
+    const { desde, hasta } = getMonthRange(mesSeleccionado)
+    const data = await getServiciosByDateRange('completo', desde, hasta)
+    const serviciosMes = data.filter((s) => s.tipo !== 'citacion' && s.tipo !== 'practica')
+    const grouped = serviciosMes.reduce<Record<string, number>>((acc, servicio) => {
+      acc[servicio.tipo] = (acc[servicio.tipo] || 0) + 1
+      return acc
+    }, {})
+    const rows = Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([tipo, total]) => ({ tipo, total }))
+
+    exportRowsToCSV([...rows, { tipo: 'TOTAL', total: serviciosMes.length }], `servicios_mes_${mesSeleccionado}.csv`)
   }
 
   return (
@@ -103,13 +120,20 @@ export default function Servicios() {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <h1 className="text-2xl font-bold">Servicios</h1>
         <div className="flex flex-wrap gap-2">
+          <input
+            type="month"
+            value={mesSeleccionado}
+            onChange={(e) => setMesSeleccionado(e.target.value)}
+            className="px-3 py-2 border rounded-lg"
+          />
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
           <button onClick={exportResumenCSV} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar resumen CSV</button>
+          <button onClick={exportServiciosMesCSV} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar servicios del mes</button>
           <button onClick={() => { setShowForm(true); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-white p-4 rounded-lg shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 surface p-4">
         <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="px-3 py-2 border rounded-lg" />
         <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="px-3 py-2 border rounded-lg" />
       </div>
@@ -127,7 +151,7 @@ export default function Servicios() {
       </div>
 
       {showForm && (
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <select required value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="px-3 py-2 border rounded-lg">
@@ -185,14 +209,14 @@ export default function Servicios() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-auto">
+      <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[860px]">
           <thead className="bg-gray-50">
             <tr><th className="p-2 text-left">Fecha</th><th>Tipo</th><th>Lugar</th><th>Vehículo</th><th>A cargo</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody>{servicios.map((s) => (
             <tr key={s.id} className="border-t">
-              <td className="p-2">{new Date(s.fecha).toLocaleDateString()}</td>
+              <td className="p-2">{formatDateOnly(s.fecha)}</td>
               <td className="p-2">{s.tipo}</td>
               <td className="p-2">{s.lugar}</td>
               <td className="p-2">{s.movil?.nombre || '-'}</td>

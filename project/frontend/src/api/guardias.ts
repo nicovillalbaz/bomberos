@@ -65,3 +65,42 @@ export const getAsistencias = async (guardiaId?: string) => {
   if (error) throw error
   return data as Asistencia[]
 }
+
+export const getAsistenciasForGuardias = async (guardiaIds: string[]) => {
+  if (guardiaIds.length === 0) return [] as Asistencia[]
+
+  const { data, error } = await (supabase as any)
+    .from('asistencia')
+    .select('*, usuario:perfiles(*), guardia:guardias(*)')
+    .in('guardia_id', guardiaIds)
+    .eq('tipo', 'asistencia_guardia')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data as Asistencia[]
+}
+
+export const setGuardiaAttendanceOverride = async (
+  guardiaId: string,
+  usuarioId: string,
+  estado: 'auto' | 'presente' | 'ausente',
+) => {
+  const actorId = getSessionUserId()
+  if (!actorId) throw new Error('No hay sesion activa')
+
+  const accion = `asistencia_guardia_manual_${estado}`
+  const { data, error } = await (supabase as any)
+    .from('asistencia')
+    .insert([{
+      usuario_id: usuarioId,
+      guardia_id: guardiaId,
+      tipo: 'asistencia_guardia',
+      accion,
+      observaciones: `Ajuste manual registrado por ${actorId}`,
+    }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as Asistencia
+}

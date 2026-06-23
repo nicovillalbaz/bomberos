@@ -112,7 +112,7 @@ export default function Novedades() {
       </div>
 
       {showForm && (
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="surface p-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <input required placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="w-full px-3 py-2 border rounded-lg">
@@ -133,7 +133,7 @@ export default function Novedades() {
 
       <div className="space-y-3">
         {novedades.map((n) => (
-          <div key={n.id} className="bg-white p-4 rounded-lg shadow">
+          <div key={n.id} className="surface p-4">
             <div className="flex justify-between">
               <h3 className="font-semibold">{n.titulo}</h3>
               <span className={`text-xs px-2 py-1 rounded ${n.origen === 'automatico' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}`}>{n.origen}</span>

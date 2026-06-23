@@ -1,5 +1,5 @@
 import { getSessionUserId, getSessionProfile, supabase } from '../lib/supabase'
-import type { NovedadGlobal } from '../types'
+import type { NovedadGlobal, Perfil } from '../types'
 
 export const getNovedades = async (limit = 50) => {
   const { data, error } = await (supabase as any)
@@ -59,4 +59,22 @@ export const createNovedadIngresoRetiroCompania = async (accion: 'ingreso' | 're
     .single()
   if (error) throw error
   return data as NovedadGlobal
+}
+
+export const getCompanyPresenceEvents = async (fechaHasta?: string) => {
+  let query = (supabase as any)
+    .from('novedades_global')
+    .select('id, usuario_id, titulo, descripcion, created_at, usuario:perfiles(*)')
+    .eq('tipo', 'personal')
+    .eq('modulo_origen', 'dashboard')
+    .order('created_at', { ascending: true })
+    .limit(5000)
+
+  if (fechaHasta) {
+    query = query.lte('created_at', fechaHasta)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data as Array<Pick<NovedadGlobal, 'id' | 'usuario_id' | 'titulo' | 'descripcion' | 'created_at'> & { usuario?: Perfil }>
 }
