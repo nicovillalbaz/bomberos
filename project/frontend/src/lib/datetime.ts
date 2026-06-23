@@ -44,6 +44,15 @@ export const getPreviousMonthRange = (date = new Date()) => {
   }
 }
 
+export const getCurrentMonthRange = (date = new Date()) => {
+  const range = getMonthRange(toMonthInputValue(date))
+  return {
+    ...range,
+    monthValue: toMonthInputValue(date),
+    label: date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
+  }
+}
+
 export const combineDateAndTime = (date: string, time: string) => {
   const base = parseDateOnly(date)
   const [hours, minutes] = time.split(':').map(Number)

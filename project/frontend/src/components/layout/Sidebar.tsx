@@ -4,6 +4,7 @@ import type { RolUsuario } from '../../types'
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['bombero', 'oficial', 'admin'] },
+  { path: '/mis-actividades', label: 'Mis actividades', icon: '✅', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/moviles', label: 'Móviles', icon: '🚒', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/salidas', label: 'Salidas', icon: '📤', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/guardias', label: 'Guardias', icon: '📋', roles: ['bombero', 'oficial', 'admin'] },
@@ -11,6 +12,7 @@ const navItems = [
   { path: '/servicios', label: 'Servicios', icon: '🚨', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/citaciones', label: 'Citaciones', icon: '🗒️', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/practicas', label: 'Prácticas', icon: '🏋️', roles: ['bombero', 'oficial', 'admin'] },
+  { path: '/reportes', label: 'Reportes', icon: '📈', roles: ['oficial', 'admin'] },
   { path: '/novedades', label: 'Novedades', icon: '📰', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },
 ]
