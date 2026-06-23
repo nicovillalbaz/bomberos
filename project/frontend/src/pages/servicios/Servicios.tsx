@@ -182,7 +182,7 @@ export default function Servicios() {
             </select>
             <input placeholder="Lugar" value={form.lugar} onChange={(e) => setForm({ ...form, lugar: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <select value={form.movil_id} onChange={(e) => setForm({ ...form, movil_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Sin vehículo</option>
+              <option value="">Sin vehiculo</option>
               {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
             </select>
             <select value={form.a_cargo_id} onChange={(e) => setForm({ ...form, a_cargo_id: e.target.value })} className="px-3 py-2 border rounded-lg">
@@ -218,7 +218,7 @@ export default function Servicios() {
               <p className="text-xs text-gray-500 mt-1">Seleccionados: {form.miembros.length}</p>
             </div>
             <textarea
-              placeholder="Descripción"
+              placeholder="Descripcion"
               value={form.descripcion}
               onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
               className="px-3 py-2 border rounded-lg sm:col-span-2"
@@ -234,7 +234,7 @@ export default function Servicios() {
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[860px]">
           <thead className="bg-gray-50">
-            <tr><th className="p-2 text-left">Fecha</th><th>Tipo</th><th>Lugar</th><th>Vehículo</th><th>A cargo</th><th>Estado</th><th></th></tr>
+            <tr><th className="p-2 text-left">Fecha</th><th>Tipo</th><th>Lugar</th><th>Vehiculo</th><th>A cargo</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody>{servicios.map((s) => (
             <tr key={s.id} className="border-t">

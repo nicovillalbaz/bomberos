@@ -40,7 +40,7 @@ export default function Login() {
       <div className="surface p-6 sm:p-8 w-full max-w-md">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">Cuartel de Bomberos</h1>
-          <p className="text-sm text-gray-500">Ingresá con tu usuario para continuar.</p>
+          <p className="text-sm text-gray-500">Ingresa con tu usuario para continuar.</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -18,7 +18,7 @@ export const isPresenceEntry = (event: PresenceEvent) => {
 
 export const isPresenceExit = (event: PresenceEvent) => {
   const text = normalize(`${event.titulo} ${event.descripcion}`)
-  return text.includes('retir') || text.includes('salida de la compania') || text.includes('salida de la compañia')
+  return text.includes('retir') || text.includes('salida de la compania') || text.includes('salida de la compania')
 }
 
 export const buildPresenceIntervals = (events: PresenceEvent[]) => {

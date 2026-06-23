@@ -61,8 +61,8 @@ export default function Novedades() {
     const descripcion = n.descripcion?.trim() || ''
 
     if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
-      if (/ingres/i.test(n.titulo) || /ingres/i.test(descripcion)) return `${actor} ingresó a la compañía.`
-      if (/retiro|retir/i.test(n.titulo) || /retiro/i.test(descripcion)) return `${actor} se retiró de la compañía.`
+      if (/ingres/i.test(n.titulo) || /ingres/i.test(descripcion)) return `${actor} ingreso a la compania.`
+      if (/retiro|retir/i.test(n.titulo) || /retiro/i.test(descripcion)) return `${actor} se retiro de la compania.`
       return `${actor}: ${descripcion}`
     }
 
@@ -73,22 +73,22 @@ export default function Novedades() {
       const destino = destinoMatch?.[1]?.trim()
       if (movil || destino) {
         const partes = [
-          movil ? `salió en el móvil ${movil}` : 'salió en un móvil',
+          movil ? `salio en el movil ${movil}` : 'salio en un movil',
           destino ? `hacia ${destino}` : 'hacia el destino definido',
         ]
         return `${actor} ${partes.join(' ')}.`
       }
-      return `${actor}: salida de móvil registrada.`
+      return `${actor}: salida de movil registrada.`
     }
 
     if (n.modulo_origen === 'inventario' || n.entidad_relacionada === 'inventario') {
-      return `${actor} actualizó inventario. ${descripcion || 'Movimiento registrado automáticamente.'}`
+      return `${actor} actualizo inventario. ${descripcion || 'Movimiento registrado automaticamente.'}`
     }
 
     if (n.entidad_relacionada === 'servicio' && detalleServicio) {
-      const base = `${actor} cargó asistencia para ${detalleServicio.tipo}.`
+      const base = `${actor} cargo asistencia para ${detalleServicio.tipo}.`
       const lugar = detalleServicio.lugar ? ` Lugar: ${detalleServicio.lugar}.` : ''
-      const movil = detalleServicio.movil ? ` Móvil: ${detalleServicio.movil}.` : ''
+      const movil = detalleServicio.movil ? ` Movil: ${detalleServicio.movil}.` : ''
       const participantes = ` Participantes: ${detalleServicio.participantes}.`
       return `${base}${lugar}${movil}${participantes}`
     }
@@ -114,15 +114,15 @@ export default function Novedades() {
       {showForm && (
         <div className="surface p-4">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input required placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+            <input required placeholder="Titulo" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} className="w-full px-3 py-2 border rounded-lg">
               <option value="general">General</option>
-              <option value="vehiculo">Vehículo</option>
+              <option value="vehiculo">Vehiculo</option>
               <option value="personal">Personal</option>
               <option value="inventario">Inventario</option>
               <option value="servicio">Servicio</option>
             </select>
-            <textarea required placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+            <textarea required placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>

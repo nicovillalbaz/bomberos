@@ -9,7 +9,7 @@ const mobileLinks = [
   { to: '/guardias', label: 'Guardias', icon: '📋' },
   { to: '/servicios', label: 'Servicios', icon: '🚨' },
   { to: '/citaciones', label: 'Citaciones', icon: '🗒️' },
-  { to: '/practicas', label: 'Prácticas', icon: '🏋️' },
+  { to: '/practicas', label: 'Practicas', icon: '🏋️' },
   { to: '/novedades', label: 'Novedades', icon: '📰' },
 ]
 

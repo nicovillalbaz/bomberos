@@ -13,7 +13,7 @@ const quickLinks = [
   { to: '/novedades', label: 'Novedades', icon: '📰' },
   { to: '/servicios', label: 'Servicios', icon: '🚨' },
   { to: '/citaciones', label: 'Citaciones', icon: '🗒️' },
-  { to: '/practicas', label: 'Prácticas', icon: '🏋️' },
+  { to: '/practicas', label: 'Practicas', icon: '🏋️' },
 ]
 
 const getActorNombre = (n: NovedadGlobal) =>
@@ -119,7 +119,7 @@ export default function Dashboard() {
 
   const parseSalidaDeMovil = (n: NovedadGlobal) => {
     const movilMatch = (n.descripcion || '').match(/salida (?:del\s+)?(.+?)\s+con destino a\s+(.+)/i)
-    if (!movilMatch) return 'Se registró salida de móvil.'
+    if (!movilMatch) return 'Se registro salida de movil.'
     return `Salida del ${movilMatch[1].trim()} con destino a ${movilMatch[2].trim()}.`
   }
 
@@ -132,19 +132,19 @@ export default function Dashboard() {
     }
     if (n.modulo_origen === 'dashboard' && n.tipo === 'personal') {
       if (/ingres/i.test(n.titulo) || /ingres/i.test(descripcion)) {
-        return `${actor} ingresó a la compañía.`
+        return `${actor} ingreso a la compania.`
       }
       if (/retiro|retir/i.test(n.titulo) || /retiro/i.test(descripcion)) {
-        return `${actor} se retiró de la compañía.`
+        return `${actor} se retiro de la compania.`
       }
-      return descripcion || `${actor} actualizó su estado de compañía.`
+      return descripcion || `${actor} actualizo su estado de compania.`
     }
     if (n.modulo_origen === 'inventario' || n.entidad_relacionada === 'inventario') {
       return `${actor}: Movimiento de inventario registrado (${n.entidad_id ? `registro ${n.entidad_id}` : 'origen/destino sin detalle'}). ${descripcion}`
     }
     if (n.modulo_origen === 'servicios' || n.tipo === 'servicio') {
       const extra = n.entidad_id ? servicioResumen[n.entidad_id] : ''
-      return extra ? `${actor}: Se registró un servicio. ${extra}` : `${actor}: ${descripcion}`
+      return extra ? `${actor}: Se registro un servicio. ${extra}` : `${actor}: ${descripcion}`
     }
     return `${actor}: ${descripcion}`
   }
@@ -179,14 +179,14 @@ export default function Dashboard() {
             onClick={() => registrar('ingreso')}
             className="w-full sm:w-auto px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
           >
-            Ingreso en la compañía
+            Ingreso en la compania
           </button>
         ) : (
           <button
             onClick={() => registrar('retiro')}
             className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
           >
-            Retiro de la compañía
+            Retiro de la compania
           </button>
         )}
         {feedback && (
@@ -198,7 +198,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="surface p-4">
-          <p className="text-sm text-gray-500">Vehículos disponibles</p>
+          <p className="text-sm text-gray-500">Vehiculos disponibles</p>
           <p className="text-3xl font-bold text-green-600">{vehiculos.length}</p>
         </div>
         <div className="surface p-4">
@@ -242,7 +242,7 @@ export default function Dashboard() {
           }
         </div>
         <div className="surface p-4">
-          <h2 className="text-lg font-semibold mb-3">Últimas novedades</h2>
+          <h2 className="text-lg font-semibold mb-3">Ultimas novedades</h2>
           {novedades.length === 0 ? <p className="text-gray-500">No hay novedades</p> :
             novedades.map((n) => (
               <div key={n.id} className="border-b py-2">
