@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSalida, getLastSalidaByVehiculo, getSalidasByDateRange, updateSalida } from '../../api/salidas'
 import { getConductores, getOficiales } from '../../api/usuarios'
 import { getVehiculosDisponibles } from '../../api/vehiculos'
-import { exportRowsToCSV } from '../../lib/export'
+import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
+import { getPreviousMonthRange } from '../../lib/datetime'
 import type { Perfil, Salida, Vehiculo } from '../../types'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
@@ -35,6 +36,7 @@ export default function Salidas() {
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
 
   const isRentado = form.conductor_id === 'rentado'
   const isMotivoOtro = form.motivo.trim().toLowerCase() === 'otro'
@@ -166,8 +168,10 @@ export default function Salidas() {
     await load()
   }
 
-  const exportCSV = () => {
-    const rows = salidas.map((s) => ({
+  const getPreviousMonthSalidaRows = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const data = await getSalidasByDateRange(desde, hasta)
+    const rows = data.map((s) => ({
       fecha: new Date(s.fecha_salida).toLocaleDateString(),
       vehiculo: s.vehiculo?.nombre ?? '',
       conductor: s.conductor ? `${s.conductor.nombre} ${s.conductor.apellido}` : (s.conductor_rentado_nombre ?? ''),
@@ -178,7 +182,25 @@ export default function Salidas() {
       combustible: s.hay_combustible ? 'Sí' : 'No',
       oficial_autorizante: s.hay_combustible ? `${s.autorizacion?.nombre ?? ''} ${s.autorizacion?.apellido ?? ''}`.trim() : '',
     }))
-    exportRowsToCSV(rows, `salidas_${new Date().toISOString().split('T')[0]}.csv`)
+    return { rows, monthValue }
+  }
+
+  const exportCSV = async () => {
+    const { rows, monthValue } = await getPreviousMonthSalidaRows()
+    exportRowsToCSV(rows, `salidas_${monthValue}.csv`)
+  }
+
+  const exportPDF = async () => {
+    const { rows, monthValue } = await getPreviousMonthSalidaRows()
+    exportRowsToPrintablePDF(`Salidas ${monthValue}`, rows)
+  }
+
+  const handleExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportPDF()
+      return
+    }
+    await exportCSV()
   }
 
   return (
@@ -186,8 +208,12 @@ export default function Salidas() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Salidas</h1>
         <div className="flex flex-wrap gap-2">
+          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
+          </select>
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={exportCSV} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={handleExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
           <button onClick={() => { setShowForm(true); setEditing(null); setForm(initialForm); setError(''); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva salida</button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getReporteServicios, getReporteSalidas, getReporteInventarioGlobal, exportToCSV } from '../../api/reportes'
+import { getPreviousMonthRange } from '../../lib/datetime'
+import { exportRowsToPrintablePDF } from '../../lib/export'
 
 const modulos = [
   { id:'servicios', label:'Servicios' },
@@ -8,11 +10,13 @@ const modulos = [
 ]
 
 export default function Reportes() {
+  const previousMonth = getPreviousMonthRange()
   const [modulo, setModulo] = useState('servicios')
-  const [fechaInicio, setFechaInicio] = useState('')
-  const [fechaFin, setFechaFin] = useState('')
+  const [fechaInicio, setFechaInicio] = useState(previousMonth.desde)
+  const [fechaFin, setFechaFin] = useState(previousMonth.hasta)
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
 
   const load = async () => {
     setLoading(true)
@@ -26,8 +30,23 @@ export default function Reportes() {
 
   useEffect(() => { load() }, [modulo])
 
-  const handleExport = () => {
-    exportToCSV(data, `${modulo}_${new Date().toISOString().split('T')[0]}.csv`)
+  const getPreviousMonthReportData = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const filtros = { fecha_inicio: desde, fecha_fin: hasta }
+    let exportData: any[] = []
+    if (modulo==='servicios') exportData = await getReporteServicios(filtros)
+    else if (modulo==='salidas') exportData = await getReporteSalidas(filtros)
+    else if (modulo==='inventario_global') exportData = await getReporteInventarioGlobal()
+    return { exportData, monthValue }
+  }
+
+  const handleExport = async () => {
+    const { exportData, monthValue } = await getPreviousMonthReportData()
+    if (exportFormat === 'pdf') {
+      exportRowsToPrintablePDF(`${modulo} ${monthValue}`, exportData)
+      return
+    }
+    exportToCSV(exportData, `${modulo}_${monthValue}.csv`)
   }
 
   return (
@@ -35,15 +54,21 @@ export default function Reportes() {
       <h1 className="text-2xl font-bold">Reportes</h1>
       <div className="surface p-4 space-y-4">
         <div className="flex gap-4 items-end">
-          <div><label className="text-sm">Módulo</label>
+          <div><label className="text-sm">MÃ³dulo</label>
             <select value={modulo} onChange={e=>setModulo(e.target.value)} className="px-3 py-2 border rounded-lg">
               {modulos.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </div>
           <div><label className="text-sm">Desde</label><input type="date" value={fechaInicio} onChange={e=>setFechaInicio(e.target.value)} className="px-3 py-2 border rounded-lg" /></div>
           <div><label className="text-sm">Hasta</label><input type="date" value={fechaFin} onChange={e=>setFechaFin(e.target.value)} className="px-3 py-2 border rounded-lg" /></div>
+          <div><label className="text-sm">Formato</label>
+            <select value={exportFormat} onChange={e=>setExportFormat(e.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
+              <option value="csv">CSV</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
           <button onClick={load} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Filtrar</button>
-          <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
         </div>
       </div>
       {loading ? <p>Cargando...</p> : (
@@ -57,4 +82,3 @@ export default function Reportes() {
     </div>
   )
 }
-

@@ -1,9 +1,21 @@
+type ExportCell = string | number | boolean | null | undefined
+type ExportRow = Record<string, ExportCell>
+
+const escapeHtml = (value: ExportCell) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+const getHeaders = (rows: ExportRow[]) => rows.length > 0 ? Object.keys(rows[0]) : []
+
 export const exportRowsToCSV = (
-  rows: Array<Record<string, string | number | boolean | null | undefined>>,
+  rows: ExportRow[],
   filename: string
 ) => {
   if (rows.length === 0) return
-  const headers = Object.keys(rows[0])
+  const headers = getHeaders(rows)
   const csvContent = [
     headers.join(','),
     ...rows.map((row) => headers.map((header) => `"${String(row[header] ?? '').replace(/"/g, '""')}"`).join(',')),
@@ -15,6 +27,16 @@ export const exportRowsToCSV = (
   link.download = filename
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+export const exportRowsToPrintablePDF = (title: string, rows: ExportRow[]) => {
+  if (rows.length === 0) return
+  const headers = getHeaders(rows)
+  exportTableToPrintablePDF(
+    title,
+    headers,
+    rows.map((row) => headers.map((header) => escapeHtml(row[header]))),
+  )
 }
 
 export const exportTableToPrintablePDF = (title: string, headers: string[], rows: string[][]) => {

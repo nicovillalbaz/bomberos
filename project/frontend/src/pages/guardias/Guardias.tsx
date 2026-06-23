@@ -9,7 +9,7 @@ import {
 import { getCompanyPresenceEvents } from '../../api/novedades'
 import { getServiciosByDateRange } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
-import { exportRowsToCSV, exportTableToPrintablePDF } from '../../lib/export'
+import { exportRowsToCSV, exportRowsToPrintablePDF, exportTableToPrintablePDF } from '../../lib/export'
 import { useAuth } from '../../hooks/useAuth'
 import {
   buildPresenceIntervals,
@@ -22,12 +22,10 @@ import {
 import {
   formatDateOnly,
   getGuardiaInterval,
-  getMonthRange,
+  getPreviousMonthRange,
   isDateFinished,
   isGuardiaFinalizada,
   parseDateOnly,
-  toDateInputValue,
-  toMonthInputValue,
 } from '../../lib/datetime'
 
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
@@ -98,13 +96,13 @@ export default function Guardias() {
   const [showForm, setShowForm] = useState(false)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
-  const [mesSeleccionado, setMesSeleccionado] = useState(toMonthInputValue())
   const [error, setError] = useState('')
   const [miembroSearch, setMiembroSearch] = useState('')
   const [selectedGuardia, setSelectedGuardia] = useState<GuardiaConMiembros | null>(null)
   const [attendanceEdits, setAttendanceEdits] = useState<Record<string, ManualAttendanceState>>({})
   const [attendanceInitial, setAttendanceInitial] = useState<Record<string, ManualAttendanceState>>({})
   const [attendanceSaving, setAttendanceSaving] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
   const [form, setForm] = useState({
     fechas: [''],
     tipo: 'voluntaria' as TipoGuardia,
@@ -270,36 +268,45 @@ export default function Guardias() {
     load()
   }
 
-  const exportCSV = () => {
-    exportRowsToCSV(parsedGuardias.map((guardia) => ({
+  const getPreviousMonthGuardias = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const data = await getGuardias(undefined, desde, hasta)
+    return {
+      monthValue,
+      guardiasMes: (data as GuardiaConMiembros[])
+        .sort((a, b) => parseDateOnly(a.fecha).getTime() - parseDateOnly(b.fecha).getTime()),
+    }
+  }
+
+  const exportCSV = async () => {
+    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
+    exportRowsToCSV(guardiasMes.map((guardia) => ({
       fecha: formatDateOnly(guardia.fecha),
       tipo: guardia.tipo,
       a_cargo: getNombre(guardia.a_cargo),
       conductor: getConductorTexto(guardia),
-      miembros: guardia.miembrosTexto,
-    })), `guardias_${toDateInputValue()}.csv`)
+      miembros: getMiembrosTexto(guardia),
+    })), `guardias_${monthValue}.csv`)
   }
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
     exportTableToPrintablePDF(
-      'Reporte de Guardias',
+      `Reporte de Guardias ${monthValue}`,
       ['Fecha', 'Tipo', 'A cargo', 'Conductor', 'Miembros'],
-      parsedGuardias.map((guardia) => [
+      guardiasMes.map((guardia) => [
         formatDateOnly(guardia.fecha),
         guardia.tipo,
         getNombre(guardia.a_cargo),
         getConductorTexto(guardia),
-        guardia.miembrosTexto,
+        getMiembrosTexto(guardia),
       ])
     )
   }
 
   const exportGuardiasMes = async () => {
-    const { desde, hasta } = getMonthRange(mesSeleccionado)
-    const data = await getGuardias(undefined, desde, hasta)
-    const rows = (data as GuardiaConMiembros[])
-      .sort((a, b) => parseDateOnly(a.fecha).getTime() - parseDateOnly(b.fecha).getTime())
-      .map((guardia) => ({
+    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
+    const rows = guardiasMes.map((guardia) => ({
         dia: formatDateOnly(guardia.fecha),
         tipo: guardia.tipo,
         horario: `${guardia.hora_inicio} a ${guardia.hora_fin}`,
@@ -309,30 +316,131 @@ export default function Guardias() {
       }))
 
     if (rows.length === 0) {
-      setError('No hay guardias para exportar en el mes seleccionado.')
+      setError('No hay guardias para exportar en el mes anterior.')
       return
     }
-    exportRowsToCSV(rows, `guardias_mes_${mesSeleccionado}.csv`)
+    exportRowsToCSV(rows, `guardias_mes_${monthValue}.csv`)
   }
 
-  const exportPorcentajes = () => {
-    if (porcentajeRows.length === 0) {
+  const exportGuardiasMesPDF = async () => {
+    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
+    const rows = guardiasMes.map((guardia) => ({
+        dia: formatDateOnly(guardia.fecha),
+        tipo: guardia.tipo,
+        horario: `${guardia.hora_inicio} a ${guardia.hora_fin}`,
+        a_cargo: getNombre(guardia.a_cargo),
+        conductor: getConductorTexto(guardia),
+        miembros: getMiembrosTexto(guardia),
+      }))
+
+    if (rows.length === 0) {
+      setError('No hay guardias para exportar en el mes anterior.')
+      return
+    }
+    exportRowsToPrintablePDF(`Guardias mes anterior ${monthValue}`, rows)
+  }
+
+  const getPreviousMonthPorcentajeRows = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const guardiasData = await getGuardias(undefined, desde, hasta) as GuardiaConMiembros[]
+    const guardiaIds = guardiasData.map((guardia) => guardia.id)
+    const latestGuardiaEnd = guardiasData.reduce<Date | null>((latest, guardia) => {
+      const { fin } = getGuardiaInterval(guardia)
+      return !latest || fin > latest ? fin : latest
+    }, null)
+
+    const [asistenciaData, presenceData, citacionesData, practicasData] = await Promise.all([
+      getAsistenciasForGuardias(guardiaIds),
+      getCompanyPresenceEvents(latestGuardiaEnd?.toISOString()),
+      getServiciosByDateRange(undefined, desde, hasta, 'citacion'),
+      getServiciosByDateRange(undefined, desde, hasta, 'practica'),
+    ])
+
+    const previousPresenceIntervals = buildPresenceIntervals(presenceData)
+    const previousGuardiasFinalizadas = guardiasData.filter((guardia) => isGuardiaFinalizada(guardia))
+    const previousCitacionesFinalizadas = citacionesData.filter((servicio) => isDateFinished(servicio.fecha))
+    const previousPracticasFinalizadas = practicasData.filter((servicio) => isDateFinished(servicio.fecha))
+
+    const rows = perfiles
+      .map((perfil) => {
+        const guardiasAsistidas = previousGuardiasFinalizadas.filter((guardia) =>
+          resolveGuardiaAttendance(perfil.id, guardia, asistenciaData, previousPresenceIntervals)
+        ).length
+        const citacionesAsistidas = previousCitacionesFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
+        const practicasAsistidas = previousPracticasFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
+        const guardiasPct = percent(guardiasAsistidas, previousGuardiasFinalizadas.length)
+        const citacionesPct = percent(citacionesAsistidas, previousCitacionesFinalizadas.length)
+        const practicasPct = percent(practicasAsistidas, previousPracticasFinalizadas.length)
+        const categoria = getPerfilCategoria(perfil)
+        const incluyePracticas = categoria === 'VK/BVC/Combatiente'
+        const generalPct = averageAvailable([
+          { total: previousGuardiasFinalizadas.length, pct: guardiasPct },
+          { total: previousCitacionesFinalizadas.length, pct: citacionesPct },
+          ...(incluyePracticas ? [{ total: previousPracticasFinalizadas.length, pct: practicasPct }] : []),
+        ])
+
+        return {
+          nombre: getNombre(perfil),
+          codigo: perfil.codigo_interno || '',
+          categoria,
+          guardias: `${guardiasAsistidas}/${previousGuardiasFinalizadas.length}`,
+          porcentaje_guardias: `${guardiasPct}%`,
+          citaciones: `${citacionesAsistidas}/${previousCitacionesFinalizadas.length}`,
+          porcentaje_citaciones: `${citacionesPct}%`,
+          practicas: incluyePracticas ? `${practicasAsistidas}/${previousPracticasFinalizadas.length}` : 'No aplica',
+          porcentaje_practicas: incluyePracticas ? `${practicasPct}%` : 'No aplica',
+          porcentaje_general: `${generalPct}%`,
+        }
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+    return { rows, monthValue }
+  }
+
+  const exportPorcentajes = async () => {
+    const { rows, monthValue } = await getPreviousMonthPorcentajeRows()
+
+    if (rows.length === 0) {
       setError('No hay porcentajes para exportar.')
       return
     }
 
-    exportRowsToCSV(porcentajeRows.map((row) => ({
-      nombre: getNombre(row.perfil),
-      codigo: row.perfil.codigo_interno || '',
-      categoria: row.categoria,
-      guardias: `${row.guardiasAsistidas}/${row.guardiasTotal}`,
-      porcentaje_guardias: `${row.guardiasPct}%`,
-      citaciones: `${row.citacionesAsistidas}/${row.citacionesTotal}`,
-      porcentaje_citaciones: `${row.citacionesPct}%`,
-      practicas: row.incluyePracticas ? `${row.practicasAsistidas}/${row.practicasTotal}` : 'No aplica',
-      porcentaje_practicas: row.incluyePracticas ? `${row.practicasPct}%` : 'No aplica',
-      porcentaje_general: `${row.generalPct}%`,
-    })), `porcentajes_asistencia_${toDateInputValue()}.csv`)
+    exportRowsToCSV(rows, `porcentajes_asistencia_${monthValue}.csv`)
+  }
+
+  const exportPorcentajesPDF = async () => {
+    const { rows, monthValue } = await getPreviousMonthPorcentajeRows()
+
+    if (rows.length === 0) {
+      setError('No hay porcentajes para exportar.')
+      return
+    }
+
+    exportRowsToPrintablePDF(`Porcentajes de asistencia ${monthValue}`, rows)
+  }
+
+  const handleGeneralExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportPDF()
+      return
+    }
+    await exportCSV()
+  }
+
+  const handleGuardiasMesExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportGuardiasMesPDF()
+      return
+    }
+    await exportGuardiasMes()
+  }
+
+  const handlePorcentajesExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportPorcentajesPDF()
+      return
+    }
+    await exportPorcentajes()
   }
 
   const getAutomaticAttendance = (perfilId: string, guardia: GuardiaConMiembros) => {
@@ -382,17 +490,14 @@ export default function Guardias() {
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <h1 className="text-2xl font-bold">Guardias</h1>
         <div className="flex flex-wrap gap-2">
-          <input
-            type="month"
-            value={mesSeleccionado}
-            onChange={(event) => setMesSeleccionado(event.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          />
+          <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
+          </select>
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={exportCSV} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
-          <button onClick={exportPDF} className="px-3 py-2 bg-indigo-600 text-white rounded-lg">Exportar PDF</button>
-          <button onClick={exportGuardiasMes} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar guardias del mes</button>
-          <button onClick={exportPorcentajes} className="px-3 py-2 bg-amber-600 text-white rounded-lg">Exportar porcentaje</button>
+          <button onClick={handleGeneralExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
+          <button onClick={handleGuardiasMesExport} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Guardias</button>
+          <button onClick={handlePorcentajesExport} className="px-3 py-2 bg-amber-600 text-white rounded-lg">Porcentaje</button>
           {isOfficialOrAdmin && (
             <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
           )}

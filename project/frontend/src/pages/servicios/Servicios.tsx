@@ -3,8 +3,8 @@ import type { Perfil, Servicio, ServicioPersonalCreate } from '../../types'
 import { createServicio, getMotivosSalidaServicio, getServiciosByDateRange, updateServicio } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
 import { getVehiculosDisponibles } from '../../api/vehiculos'
-import { exportRowsToCSV } from '../../lib/export'
-import { formatDateOnly, getMonthRange, toDateInputValue, toMonthInputValue } from '../../lib/datetime'
+import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
+import { formatDateOnly, getPreviousMonthRange } from '../../lib/datetime'
 
 export default function Servicios() {
   const [servicios, setServicios] = useState<Servicio[]>([])
@@ -15,8 +15,8 @@ export default function Servicios() {
   const [motivos, setMotivos] = useState<Array<{ id: string; nombre: string }>>([])
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
-  const [mesSeleccionado, setMesSeleccionado] = useState(toMonthInputValue())
   const [miembroSearch, setMiembroSearch] = useState('')
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
   const [form, setForm] = useState({
     fecha: '',
     tipo: '',
@@ -88,20 +88,8 @@ export default function Servicios() {
     load()
   }
 
-  const resumen = useMemo(() => {
-    const grouped = servicios.reduce<Record<string, number>>((acc, s) => {
-      acc[s.tipo] = (acc[s.tipo] || 0) + 1
-      return acc
-    }, {})
-    return Object.entries(grouped).map(([tipo, total]) => ({ tipo, total }))
-  }, [servicios])
-
-  const exportResumenCSV = () => {
-    exportRowsToCSV(resumen, `resumen_servicios_${toDateInputValue()}.csv`)
-  }
-
-  const exportServiciosMesCSV = async () => {
-    const { desde, hasta } = getMonthRange(mesSeleccionado)
+  const getPreviousMonthServiceSummaryRows = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
     const data = await getServiciosByDateRange('completo', desde, hasta)
     const serviciosMes = data.filter((s) => s.tipo !== 'citacion' && s.tipo !== 'practica')
     const grouped = serviciosMes.reduce<Record<string, number>>((acc, servicio) => {
@@ -112,7 +100,43 @@ export default function Servicios() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([tipo, total]) => ({ tipo, total }))
 
-    exportRowsToCSV([...rows, { tipo: 'TOTAL', total: serviciosMes.length }], `servicios_mes_${mesSeleccionado}.csv`)
+    return { rows: [...rows, { tipo: 'TOTAL', total: serviciosMes.length }], monthValue }
+  }
+
+  const exportResumenCSV = async () => {
+    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    exportRowsToCSV(rows, `resumen_servicios_${monthValue}.csv`)
+  }
+
+  const exportResumenPDF = async () => {
+    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    exportRowsToPrintablePDF(`Resumen servicios ${monthValue}`, rows)
+  }
+
+  const exportServiciosMesCSV = async () => {
+    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    exportRowsToCSV(rows, `servicios_mes_${monthValue}.csv`)
+  }
+
+  const exportServiciosMesPDF = async () => {
+    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    exportRowsToPrintablePDF(`Servicios mes anterior ${monthValue}`, rows)
+  }
+
+  const handleResumenExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportResumenPDF()
+      return
+    }
+    await exportResumenCSV()
+  }
+
+  const handleServiciosMesExport = async () => {
+    if (exportFormat === 'pdf') {
+      await exportServiciosMesPDF()
+      return
+    }
+    await exportServiciosMesCSV()
   }
 
   return (
@@ -120,15 +144,13 @@ export default function Servicios() {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <h1 className="text-2xl font-bold">Servicios</h1>
         <div className="flex flex-wrap gap-2">
-          <input
-            type="month"
-            value={mesSeleccionado}
-            onChange={(e) => setMesSeleccionado(e.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          />
+          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
+          </select>
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={exportResumenCSV} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar resumen CSV</button>
-          <button onClick={exportServiciosMesCSV} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar servicios del mes</button>
+          <button onClick={handleResumenExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar resumen</button>
+          <button onClick={handleServiciosMesExport} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar servicios</button>
           <button onClick={() => { setShowForm(true); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
         </div>
       </div>
