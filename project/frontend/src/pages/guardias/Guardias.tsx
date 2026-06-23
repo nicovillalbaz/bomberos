@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Asistencia, Guardia, Perfil, Servicio, TipoGuardia } from '../../types'
+import type { Asistencia, Guardia, Perfil, TipoGuardia } from '../../types'
 import {
   createMultipleGuardias,
   getAsistenciasForGuardias,
@@ -7,7 +7,6 @@ import {
   setGuardiaAttendanceOverride,
 } from '../../api/guardias'
 import { getCompanyPresenceEvents } from '../../api/novedades'
-import { getServiciosByDateRange } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
 import { exportRowsToCSV, exportRowsToPrintablePDF, exportTableToPrintablePDF } from '../../lib/export'
 import { useAuth } from '../../hooks/useAuth'
@@ -23,7 +22,6 @@ import {
   formatDateOnly,
   getGuardiaInterval,
   getPreviousMonthRange,
-  isDateFinished,
   isGuardiaFinalizada,
   parseDateOnly,
 } from '../../lib/datetime'
@@ -31,22 +29,6 @@ import {
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
 type GuardiaConMiembros = Omit<Guardia, 'miembros'> & { miembros?: GuardiaMiembroItem[] }
 type GuardiaRow = GuardiaConMiembros & { miembrosTexto: string }
-
-type PorcentajeRow = {
-  perfil: Perfil
-  categoria: 'VK/BVC/Combatiente' | 'VA/BVA/Activo'
-  incluyePracticas: boolean
-  guardiasAsistidas: number
-  guardiasTotal: number
-  guardiasPct: number
-  citacionesAsistidas: number
-  citacionesTotal: number
-  citacionesPct: number
-  practicasAsistidas: number
-  practicasTotal: number
-  practicasPct: number
-  generalPct: number
-}
 
 const getNombre = (perfil?: Perfil | null) =>
   `${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()
@@ -68,31 +50,12 @@ const getMiembrosTexto = (guardia: Pick<GuardiaConMiembros, 'miembros'>) =>
 const getConductorTexto = (guardia: GuardiaConMiembros) =>
   getNombre(guardia.conductor) || guardia.conductor_rentado_nombre || '-'
 
-const getPerfilCategoria = (perfil: Perfil): PorcentajeRow['categoria'] => {
-  const codigo = (perfil.codigo_interno || '').trim().toUpperCase()
-  if (codigo.startsWith('VA') || codigo.startsWith('BVA') || codigo.includes('ACTIVO')) return 'VA/BVA/Activo'
-  return 'VK/BVC/Combatiente'
-}
-
-const percent = (asistidas: number, total: number) => (total > 0 ? Math.round((asistidas / total) * 100) : 0)
-
-const averageAvailable = (items: Array<{ total: number; pct: number }>) => {
-  const available = items.filter((item) => item.total > 0)
-  if (available.length === 0) return 0
-  return Math.round(available.reduce((sum, item) => sum + item.pct, 0) / available.length)
-}
-
-const servicioTienePersona = (servicio: Servicio, perfilId: string) =>
-  (servicio.personal || []).some((item) => item.persona_id === perfilId)
-
 export default function Guardias() {
   const { isOfficialOrAdmin } = useAuth()
   const [guardias, setGuardias] = useState<GuardiaConMiembros[]>([])
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [asistencias, setAsistencias] = useState<Asistencia[]>([])
   const [presenceEvents, setPresenceEvents] = useState<PresenceEvent[]>([])
-  const [citaciones, setCitaciones] = useState<Servicio[]>([])
-  const [practicas, setPracticas] = useState<Servicio[]>([])
   const [showForm, setShowForm] = useState(false)
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
@@ -138,17 +101,13 @@ export default function Guardias() {
       return !latest || fin > latest ? fin : latest
     }, null)
 
-    const [asistenciaData, presenceData, citacionesData, practicasData] = await Promise.all([
+    const [asistenciaData, presenceData] = await Promise.all([
       getAsistenciasForGuardias(guardiaIds),
       getCompanyPresenceEvents(latestGuardiaEnd?.toISOString()),
-      getServiciosByDateRange(undefined, fechaDesde || undefined, fechaHasta || undefined, 'citacion'),
-      getServiciosByDateRange(undefined, fechaDesde || undefined, fechaHasta || undefined, 'practica'),
     ])
 
     setAsistencias(asistenciaData)
     setPresenceEvents(presenceData)
-    setCitaciones(citacionesData)
-    setPracticas(practicasData)
   }
 
   useEffect(() => {
@@ -167,59 +126,6 @@ export default function Guardias() {
     const needle = miembroSearch.toLowerCase()
     return perfiles.filter((perfil) => `${perfil.nombre} ${perfil.apellido}`.toLowerCase().includes(needle))
   }, [perfiles, miembroSearch])
-
-  const guardiasFinalizadas = useMemo(
-    () => parsedGuardias.filter((guardia) => isGuardiaFinalizada(guardia)),
-    [parsedGuardias],
-  )
-
-  const citacionesFinalizadas = useMemo(
-    () => citaciones.filter((servicio) => isDateFinished(servicio.fecha)),
-    [citaciones],
-  )
-
-  const practicasFinalizadas = useMemo(
-    () => practicas.filter((servicio) => isDateFinished(servicio.fecha)),
-    [practicas],
-  )
-
-  const porcentajeRows = useMemo<PorcentajeRow[]>(() => {
-    return perfiles
-      .map((perfil) => {
-        const guardiasAsistidas = guardiasFinalizadas.filter((guardia) =>
-          resolveGuardiaAttendance(perfil.id, guardia, asistencias, presenceIntervals)
-        ).length
-        const citacionesAsistidas = citacionesFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
-        const practicasAsistidas = practicasFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
-        const guardiasPct = percent(guardiasAsistidas, guardiasFinalizadas.length)
-        const citacionesPct = percent(citacionesAsistidas, citacionesFinalizadas.length)
-        const practicasPct = percent(practicasAsistidas, practicasFinalizadas.length)
-        const categoria = getPerfilCategoria(perfil)
-        const incluyePracticas = categoria === 'VK/BVC/Combatiente'
-        const generalPct = averageAvailable([
-          { total: guardiasFinalizadas.length, pct: guardiasPct },
-          { total: citacionesFinalizadas.length, pct: citacionesPct },
-          ...(incluyePracticas ? [{ total: practicasFinalizadas.length, pct: practicasPct }] : []),
-        ])
-
-        return {
-          perfil,
-          categoria,
-          incluyePracticas,
-          guardiasAsistidas,
-          guardiasTotal: guardiasFinalizadas.length,
-          guardiasPct,
-          citacionesAsistidas,
-          citacionesTotal: citacionesFinalizadas.length,
-          citacionesPct,
-          practicasAsistidas,
-          practicasTotal: practicasFinalizadas.length,
-          practicasPct,
-          generalPct,
-        }
-      })
-      .sort((a, b) => `${a.perfil.apellido} ${a.perfil.nombre}`.localeCompare(`${b.perfil.apellido} ${b.perfil.nombre}`))
-  }, [asistencias, citacionesFinalizadas, guardiasFinalizadas, perfiles, practicasFinalizadas, presenceIntervals])
 
   const setFechaAt = (index: number, value: string) => {
     setForm((prev) => ({ ...prev, fechas: prev.fechas.map((fecha, i) => (i === index ? value : fecha)) }))
@@ -340,85 +246,6 @@ export default function Guardias() {
     exportRowsToPrintablePDF(`Guardias mes anterior ${monthValue}`, rows)
   }
 
-  const getPreviousMonthPorcentajeRows = async () => {
-    const { desde, hasta, monthValue } = getPreviousMonthRange()
-    const guardiasData = await getGuardias(undefined, desde, hasta) as GuardiaConMiembros[]
-    const guardiaIds = guardiasData.map((guardia) => guardia.id)
-    const latestGuardiaEnd = guardiasData.reduce<Date | null>((latest, guardia) => {
-      const { fin } = getGuardiaInterval(guardia)
-      return !latest || fin > latest ? fin : latest
-    }, null)
-
-    const [asistenciaData, presenceData, citacionesData, practicasData] = await Promise.all([
-      getAsistenciasForGuardias(guardiaIds),
-      getCompanyPresenceEvents(latestGuardiaEnd?.toISOString()),
-      getServiciosByDateRange(undefined, desde, hasta, 'citacion'),
-      getServiciosByDateRange(undefined, desde, hasta, 'practica'),
-    ])
-
-    const previousPresenceIntervals = buildPresenceIntervals(presenceData)
-    const previousGuardiasFinalizadas = guardiasData.filter((guardia) => isGuardiaFinalizada(guardia))
-    const previousCitacionesFinalizadas = citacionesData.filter((servicio) => isDateFinished(servicio.fecha))
-    const previousPracticasFinalizadas = practicasData.filter((servicio) => isDateFinished(servicio.fecha))
-
-    const rows = perfiles
-      .map((perfil) => {
-        const guardiasAsistidas = previousGuardiasFinalizadas.filter((guardia) =>
-          resolveGuardiaAttendance(perfil.id, guardia, asistenciaData, previousPresenceIntervals)
-        ).length
-        const citacionesAsistidas = previousCitacionesFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
-        const practicasAsistidas = previousPracticasFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
-        const guardiasPct = percent(guardiasAsistidas, previousGuardiasFinalizadas.length)
-        const citacionesPct = percent(citacionesAsistidas, previousCitacionesFinalizadas.length)
-        const practicasPct = percent(practicasAsistidas, previousPracticasFinalizadas.length)
-        const categoria = getPerfilCategoria(perfil)
-        const incluyePracticas = categoria === 'VK/BVC/Combatiente'
-        const generalPct = averageAvailable([
-          { total: previousGuardiasFinalizadas.length, pct: guardiasPct },
-          { total: previousCitacionesFinalizadas.length, pct: citacionesPct },
-          ...(incluyePracticas ? [{ total: previousPracticasFinalizadas.length, pct: practicasPct }] : []),
-        ])
-
-        return {
-          nombre: getNombre(perfil),
-          codigo: perfil.codigo_interno || '',
-          categoria,
-          guardias: `${guardiasAsistidas}/${previousGuardiasFinalizadas.length}`,
-          porcentaje_guardias: `${guardiasPct}%`,
-          citaciones: `${citacionesAsistidas}/${previousCitacionesFinalizadas.length}`,
-          porcentaje_citaciones: `${citacionesPct}%`,
-          practicas: incluyePracticas ? `${practicasAsistidas}/${previousPracticasFinalizadas.length}` : 'No aplica',
-          porcentaje_practicas: incluyePracticas ? `${practicasPct}%` : 'No aplica',
-          porcentaje_general: `${generalPct}%`,
-        }
-      })
-      .sort((a, b) => a.nombre.localeCompare(b.nombre))
-
-    return { rows, monthValue }
-  }
-
-  const exportPorcentajes = async () => {
-    const { rows, monthValue } = await getPreviousMonthPorcentajeRows()
-
-    if (rows.length === 0) {
-      setError('No hay porcentajes para exportar.')
-      return
-    }
-
-    exportRowsToCSV(rows, `porcentajes_asistencia_${monthValue}.csv`)
-  }
-
-  const exportPorcentajesPDF = async () => {
-    const { rows, monthValue } = await getPreviousMonthPorcentajeRows()
-
-    if (rows.length === 0) {
-      setError('No hay porcentajes para exportar.')
-      return
-    }
-
-    exportRowsToPrintablePDF(`Porcentajes de asistencia ${monthValue}`, rows)
-  }
-
   const handleGeneralExport = async () => {
     if (exportFormat === 'pdf') {
       await exportPDF()
@@ -433,14 +260,6 @@ export default function Guardias() {
       return
     }
     await exportGuardiasMes()
-  }
-
-  const handlePorcentajesExport = async () => {
-    if (exportFormat === 'pdf') {
-      await exportPorcentajesPDF()
-      return
-    }
-    await exportPorcentajes()
   }
 
   const getAutomaticAttendance = (perfilId: string, guardia: GuardiaConMiembros) => {
@@ -497,7 +316,6 @@ export default function Guardias() {
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
           <button onClick={handleGeneralExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
           <button onClick={handleGuardiasMesExport} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Guardias</button>
-          <button onClick={handlePorcentajesExport} className="px-3 py-2 bg-amber-600 text-white rounded-lg">Porcentaje</button>
           {isOfficialOrAdmin && (
             <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
           )}
@@ -576,45 +394,6 @@ export default function Guardias() {
           </form>
         </div>
       )}
-
-      <div className="surface overflow-auto">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold">Porcentajes de asistencia</h2>
-          <p className="text-sm text-gray-500">Guardias finalizadas, citaciones y practicas dentro del filtro actual.</p>
-        </div>
-        <table className="w-full text-sm min-w-[1040px]">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-2 text-left">Persona</th>
-              <th className="p-2 text-left">Codigo</th>
-              <th className="p-2 text-left">Categoria</th>
-              <th className="p-2">Guardias</th>
-              <th className="p-2">Citaciones</th>
-              <th className="p-2">Practicas</th>
-              <th className="p-2">General</th>
-            </tr>
-          </thead>
-          <tbody>
-            {porcentajeRows.length === 0 ? (
-              <tr><td className="p-3 text-gray-500" colSpan={7}>No hay perfiles activos para calcular.</td></tr>
-            ) : (
-              porcentajeRows.map((row) => (
-                <tr key={row.perfil.id} className="border-t">
-                  <td className="p-2">{getNombre(row.perfil)}</td>
-                  <td className="p-2">{row.perfil.codigo_interno || '-'}</td>
-                  <td className="p-2">{row.categoria}</td>
-                  <td className="p-2 text-center">{row.guardiasAsistidas}/{row.guardiasTotal} ({row.guardiasPct}%)</td>
-                  <td className="p-2 text-center">{row.citacionesAsistidas}/{row.citacionesTotal} ({row.citacionesPct}%)</td>
-                  <td className="p-2 text-center">
-                    {row.incluyePracticas ? `${row.practicasAsistidas}/${row.practicasTotal} (${row.practicasPct}%)` : 'No aplica'}
-                  </td>
-                  <td className="p-2 text-center font-semibold">{row.generalPct}%</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
 
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[920px]">

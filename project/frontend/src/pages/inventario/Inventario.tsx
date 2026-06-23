@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { getVehiculosDisponibles } from '../../api/vehiculos'
 import {
   getInventarioCompania,
@@ -21,9 +21,8 @@ import type {
 } from '../../types'
 
 function InventarioMovilView() {
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
+  const { movilId = '' } = useParams()
   const [materiales, setMateriales] = useState<Material[]>([])
-  const [selected, setSelected] = useState('')
   const [inventario, setInventario] = useState<Record<string, number>>({})
   const [cantidad, setCantidad] = useState<Record<string, number>>({})
   const [origen, setOrigen] = useState<Record<string, 'deposito' | 'compania'>>({})
@@ -31,26 +30,30 @@ function InventarioMovilView() {
   const [observacion, setObservacion] = useState('')
 
   useEffect(() => {
-    Promise.all([getVehiculosDisponibles(), getMateriales()]).then(([v, m]) => {
-      setVehiculos(v)
-      setMateriales(m)
-    })
+    getMateriales().then(setMateriales)
   }, [])
 
-  const loadInventario = async (movilId: string) => {
-    setSelected(movilId)
+  const loadInventario = async () => {
     if (!movilId) {
       setInventario({})
       return
     }
     const data = await getInventarioMovil(movilId)
     const map: Record<string, number> = {}
-    data.forEach((i) => { if (i.cantidad > 0) map[i.material_id] = i.cantidad })
+    data.forEach((item) => {
+      if (item.cantidad > 0) map[item.material_id] = item.cantidad
+    })
     setInventario(map)
   }
 
+  useEffect(() => {
+    setCantidad({})
+    setOrigen({})
+    loadInventario()
+  }, [movilId])
+
   const cargarMaterial = async (materialId: string) => {
-    if (!selected) return
+    if (!movilId) return
     const qty = Number(cantidad[materialId] ?? 0)
     if (!Number.isFinite(qty) || qty <= 0) return
 
@@ -59,77 +62,70 @@ function InventarioMovilView() {
       cantidad: qty,
       origen_tipo: origen[materialId] ?? 'deposito',
       destino_tipo: 'movil',
-      destino_ref: selected,
-      motivo: motivo || 'Carga de móvil',
+      destino_ref: movilId,
+      motivo: motivo || 'Carga de movil',
       observacion: observacion || null,
     })
 
     setCantidad((prev) => ({ ...prev, [materialId]: 0 }))
-    await loadInventario(selected)
+    await loadInventario()
   }
 
-  const materialesConStock = materiales.filter((m) => inventario[m.id] > 0)
+  const materialesConStock = materiales.filter((material) => inventario[material.id] > 0)
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 surface p-3">
-        <select value={selected} onChange={(e) => loadInventario(e.target.value)} className="px-3 py-2 border rounded-lg">
-          <option value="">Seleccionar móvil</option>
-          {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-        </select>
         <input placeholder="Motivo (opcional)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="px-3 py-2 border rounded-lg" />
-        <input placeholder="Observación (opcional)" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="sm:col-span-2 px-3 py-2 border rounded-lg" />
+        <input placeholder="Observacion (opcional)" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="px-3 py-2 border rounded-lg" />
       </div>
 
-      {selected && (
-        <div className="surface overflow-auto">
-          {materialesConStock.length === 0 ? (
-            <p className="p-4 text-gray-500">No hay stock cargado en este móvil.</p>
-          ) : (
-            <table className="w-full text-sm min-w-[760px]">
-              <thead className="bg-gray-50">
-                <tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Stock móvil</th><th>Origen</th><th>Cantidad</th><th></th></tr>
-              </thead>
-              <tbody>
-                {materialesConStock.map((m) => (
-                  <tr key={m.id} className="border-t">
-                    <td className="p-2">{m.nombre}</td>
-                    <td className="p-2">{m.categoria}</td>
-                    <td className="p-2 font-semibold">{inventario[m.id] ?? 0}</td>
-                    <td className="p-2">
-                      <select
-                        value={origen[m.id] ?? 'deposito'}
-                        onChange={(e) => setOrigen((prev) => ({ ...prev, [m.id]: e.target.value as 'deposito' | 'compania' }))}
-                        className="px-2 py-1 border rounded"
-                      >
-                        <option value="deposito">Depósito</option>
-                        <option value="compania">Compañía</option>
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={inventario[m.id] ?? 0}
-                        value={cantidad[m.id] ?? 0}
-                        onChange={(e) => setCantidad((prev) => ({ ...prev, [m.id]: Number(e.target.value) || 0 }))}
-                        className="w-24 px-2 py-1 border rounded"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <button onClick={() => cargarMaterial(m.id)} className="text-blue-600 text-xs">Registrar carga</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+      <div className="surface overflow-auto">
+        {materialesConStock.length === 0 ? (
+          <p className="p-4 text-gray-500">No hay stock cargado en este movil.</p>
+        ) : (
+          <table className="w-full text-sm min-w-[760px]">
+            <thead className="bg-gray-50">
+              <tr><th className="p-2 text-left">Material</th><th>Categoria</th><th>Stock movil</th><th>Origen</th><th>Cantidad</th><th></th></tr>
+            </thead>
+            <tbody>
+              {materialesConStock.map((material) => (
+                <tr key={material.id} className="border-t">
+                  <td className="p-2">{material.nombre}</td>
+                  <td className="p-2">{material.categoria}</td>
+                  <td className="p-2 font-semibold">{inventario[material.id] ?? 0}</td>
+                  <td className="p-2">
+                    <select
+                      value={origen[material.id] ?? 'deposito'}
+                      onChange={(e) => setOrigen((prev) => ({ ...prev, [material.id]: e.target.value as 'deposito' | 'compania' }))}
+                      className="px-2 py-1 border rounded"
+                    >
+                      <option value="deposito">Deposito</option>
+                      <option value="compania">Compania</option>
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={inventario[material.id] ?? 0}
+                      value={cantidad[material.id] ?? 0}
+                      onChange={(e) => setCantidad((prev) => ({ ...prev, [material.id]: Number(e.target.value) || 0 }))}
+                      className="w-24 px-2 py-1 border rounded"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <button onClick={() => cargarMaterial(material.id)} className="text-blue-600 text-xs">Registrar carga</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }
-
 function TransferToUbicacionView({
   titulo,
   destinoTipo,
@@ -629,27 +625,50 @@ function HistorialMovimientosView() {
 }
 
 export default function Inventario() {
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
+  const [loadingVehiculos, setLoadingVehiculos] = useState(true)
+
+  useEffect(() => {
+    getVehiculosDisponibles()
+      .then(setVehiculos)
+      .finally(() => setLoadingVehiculos(false))
+  }, [])
+
+  const firstMovilPath = vehiculos[0] ? `/inventario/movil/${vehiculos[0].id}` : '/inventario/global'
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Inventario</h1>
       <div className="flex gap-4 border-b overflow-x-auto">
-        <NavLink to="/inventario/movil" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Móvil</NavLink>
+        {vehiculos.map((vehiculo) => (
+          <NavLink
+            key={vehiculo.id}
+            to={`/inventario/movil/${vehiculo.id}`}
+            className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}
+          >
+            {vehiculo.nombre}
+          </NavLink>
+        ))}
         <NavLink to="/inventario/global" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Global</NavLink>
-        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compañía</NavLink>
-        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Depósito</NavLink>
+        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compania</NavLink>
+        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Deposito</NavLink>
         <NavLink to="/inventario/ajustes" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Ajustes</NavLink>
         <NavLink to="/inventario/historial" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Historial</NavLink>
       </div>
-      <Routes>
-        <Route path="movil" element={<InventarioMovilView />} />
-        <Route path="global" element={<InventarioGlobalView />} />
-        <Route path="compania" element={<TransferToUbicacionView titulo="Compañía" destinoTipo="compania" origenOpciones={['deposito', 'movil', 'externo']} getStock={getInventarioCompania} />} />
-        <Route path="deposito" element={<TransferToUbicacionView titulo="Depósito" destinoTipo="deposito" origenOpciones={['compania', 'movil', 'externo']} getStock={getInventarioDeposito} />} />
-        <Route path="ajustes" element={<AjustesMovimientosView />} />
-        <Route path="historial" element={<HistorialMovimientosView />} />
-        <Route path="*" element={<Navigate to="/inventario/movil" replace />} />
-      </Routes>
+      {loadingVehiculos ? (
+        <div className="surface p-4 text-sm text-gray-500">Cargando inventario...</div>
+      ) : (
+        <Routes>
+          <Route path="movil" element={<Navigate to={firstMovilPath} replace />} />
+          <Route path="movil/:movilId" element={<InventarioMovilView />} />
+          <Route path="global" element={<InventarioGlobalView />} />
+          <Route path="compania" element={<TransferToUbicacionView titulo="Compania" destinoTipo="compania" origenOpciones={['deposito', 'movil', 'externo']} getStock={getInventarioCompania} />} />
+          <Route path="deposito" element={<TransferToUbicacionView titulo="Deposito" destinoTipo="deposito" origenOpciones={['compania', 'movil', 'externo']} getStock={getInventarioDeposito} />} />
+          <Route path="ajustes" element={<AjustesMovimientosView />} />
+          <Route path="historial" element={<HistorialMovimientosView />} />
+          <Route path="*" element={<Navigate to={firstMovilPath} replace />} />
+        </Routes>
+      )}
     </div>
   )
 }
-

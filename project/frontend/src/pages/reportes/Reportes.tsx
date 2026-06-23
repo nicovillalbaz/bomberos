@@ -11,6 +11,7 @@ import type { Asistencia, Guardia, Perfil, Servicio } from '../../types'
 
 type ReportTab = 'porcentajes' | 'servicios'
 type ExportFormat = 'csv' | 'pdf'
+type PerfilCategoria = 'Combatiente' | 'Activo'
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
 type GuardiaConMiembros = Omit<Guardia, 'miembros'> & { miembros?: GuardiaMiembroItem[] }
 
@@ -23,6 +24,8 @@ type PercentageFields = {
 
 type PercentageRow = PercentageFields & {
   perfil: Perfil
+  categoria: PerfilCategoria
+  incluyePracticas: boolean
   guardiasAsistidas: number
   guardiasTotal: number
   citacionesAsistidas: number
@@ -38,18 +41,35 @@ type ServiceTotalRow = {
   borradores: number
 }
 
-const percent = (asistidas: number, total: number) => (total > 0 ? Math.round((asistidas / total) * 100) : 0)
+const percent = (asistidas: number, total: number, emptyPercent: number) =>
+  total > 0 ? Math.round((asistidas / total) * 100) : emptyPercent
 
-const averageAvailable = (items: Array<{ total: number; pct: number }>) => {
-  const available = items.filter((item) => item.total > 0)
-  if (available.length === 0) return 0
-  return Math.round(available.reduce((sum, item) => sum + item.pct, 0) / available.length)
-}
+const averagePercentages = (items: number[]) =>
+  items.length > 0 ? Math.round(items.reduce((sum, item) => sum + item, 0) / items.length) : 0
 
 const getNombre = (perfil?: Perfil | null) => `${perfil?.apellido ?? ''} ${perfil?.nombre ?? ''}`.trim()
 
+const isGuardiaMiembroRelacion = (item: GuardiaMiembroItem): item is { miembro?: Perfil | null } =>
+  Object.prototype.hasOwnProperty.call(item, 'miembro')
+
+const getMiembroPerfil = (item: GuardiaMiembroItem): Perfil | null | undefined => {
+  if (isGuardiaMiembroRelacion(item)) return item.miembro
+  return item
+}
+
+const guardiaTienePersona = (guardia: GuardiaConMiembros, perfilId: string) =>
+  guardia.a_cargo_id === perfilId ||
+  guardia.conductor_id === perfilId ||
+  (guardia.miembros || []).some((item) => getMiembroPerfil(item)?.id === perfilId)
+
 const servicioTienePersona = (servicio: Servicio, perfilId: string) =>
   (servicio.personal || []).some((item) => item.persona_id === perfilId)
+
+const getPerfilCategoria = (perfil: Perfil): PerfilCategoria => {
+  const codigo = (perfil.codigo_interno || '').trim().toUpperCase()
+  if (codigo.startsWith('VA') || codigo.startsWith('BVA') || codigo.includes('ACTIVO')) return 'Activo'
+  return 'Combatiente'
+}
 
 const normalizeServiceType = (tipo: string) => {
   if (!tipo) return 'Sin tipo'
@@ -141,24 +161,29 @@ export default function Reportes() {
   const percentageRows = useMemo<PercentageRow[]>(() => {
     return perfiles
       .map((perfil) => {
-        const guardiasAsistidas = guardiasFinalizadas.filter((guardia) =>
+        const guardiasAsignadas = guardiasFinalizadas.filter((guardia) => guardiaTienePersona(guardia, perfil.id))
+        const guardiasAsistidas = guardiasAsignadas.filter((guardia) =>
           resolveGuardiaAttendance(perfil.id, guardia, asistencias, presenceIntervals),
         ).length
         const citacionesAsistidas = citacionesFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
         const practicasAsistidas = practicasFinalizadas.filter((servicio) => servicioTienePersona(servicio, perfil.id)).length
-        const guardiasPct = percent(guardiasAsistidas, guardiasFinalizadas.length)
-        const citacionesPct = percent(citacionesAsistidas, citacionesFinalizadas.length)
-        const practicasPct = percent(practicasAsistidas, practicasFinalizadas.length)
-        const totalPct = averageAvailable([
-          { total: guardiasFinalizadas.length, pct: guardiasPct },
-          { total: citacionesFinalizadas.length, pct: citacionesPct },
-          { total: practicasFinalizadas.length, pct: practicasPct },
+        const categoria = getPerfilCategoria(perfil)
+        const incluyePracticas = categoria === 'Combatiente'
+        const guardiasPct = percent(guardiasAsistidas, guardiasAsignadas.length, 0)
+        const citacionesPct = percent(citacionesAsistidas, citacionesFinalizadas.length, 100)
+        const practicasPct = incluyePracticas ? percent(practicasAsistidas, practicasFinalizadas.length, 100) : 100
+        const totalPct = averagePercentages([
+          guardiasPct,
+          citacionesPct,
+          ...(incluyePracticas ? [practicasPct] : []),
         ])
 
         return {
           perfil,
+          categoria,
+          incluyePracticas,
           guardiasAsistidas,
-          guardiasTotal: guardiasFinalizadas.length,
+          guardiasTotal: guardiasAsignadas.length,
           guardiasPct,
           citacionesAsistidas,
           citacionesTotal: citacionesFinalizadas.length,
@@ -200,24 +225,32 @@ export default function Reportes() {
   }, [month])
 
   const updatePercentage = (perfilId: string, field: keyof PercentageFields, value: number) => {
+    const row = visiblePercentageRows.find((item) => item.perfil.id === perfilId)
+    if (!row) return
+    const nextValue = clampPercent(value)
+
     setEditedPercentages((prev) => ({
       ...prev,
       [perfilId]: {
         ...prev[perfilId],
-        [field]: clampPercent(value),
+        [field]: nextValue,
+        ...(field === 'totalPct' ? {} : {
+          totalPct: averagePercentages([
+            field === 'guardiasPct' ? nextValue : prev[perfilId]?.guardiasPct ?? row.guardiasPct,
+            field === 'citacionesPct' ? nextValue : prev[perfilId]?.citacionesPct ?? row.citacionesPct,
+            ...(row.incluyePracticas ? [field === 'practicasPct' ? nextValue : prev[perfilId]?.practicasPct ?? row.practicasPct] : []),
+          ]),
+        }),
       },
     }))
   }
 
   const buildPercentageExportRows = () => visiblePercentageRows.map((row) => ({
-    voluntario: getNombre(row.perfil),
+    nombre_completo: getNombre(row.perfil),
     codigo: row.perfil.codigo_interno ?? '',
-    guardias: `${row.guardiasAsistidas}/${row.guardiasTotal}`,
     porcentaje_guardias: `${row.guardiasPct}%`,
-    citaciones: `${row.citacionesAsistidas}/${row.citacionesTotal}`,
     porcentaje_citaciones: `${row.citacionesPct}%`,
-    practicas: `${row.practicasAsistidas}/${row.practicasTotal}`,
-    porcentaje_practicas: `${row.practicasPct}%`,
+    porcentaje_practicas: row.incluyePracticas ? `${row.practicasPct}%` : 'No aplica',
     porcentaje_total: `${row.totalPct}%`,
   }))
 
@@ -320,6 +353,7 @@ export default function Reportes() {
               <tr>
                 <th className="p-2 text-left">Voluntario</th>
                 <th className="p-2 text-left">Codigo</th>
+                <th className="p-2 text-left">Categoria</th>
                 <th className="p-2 text-left">Guardias</th>
                 <th className="p-2 text-left">% Guardias</th>
                 <th className="p-2 text-left">Citaciones</th>
@@ -332,12 +366,13 @@ export default function Reportes() {
             <tbody>
               {visiblePercentageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-4 text-center text-gray-500">Sin voluntarios activos.</td>
+                  <td colSpan={10} className="p-4 text-center text-gray-500">Sin voluntarios activos.</td>
                 </tr>
               ) : visiblePercentageRows.map((row) => (
                 <tr key={row.perfil.id} className="border-t">
                   <td className="p-2 font-medium">{getNombre(row.perfil)}</td>
                   <td className="p-2 text-gray-500">{row.perfil.codigo_interno || '-'}</td>
+                  <td className="p-2 text-gray-500">{row.categoria}</td>
                   <td className="p-2">{row.guardiasAsistidas}/{row.guardiasTotal}</td>
                   <td className="p-2">
                     <input
@@ -360,16 +395,20 @@ export default function Reportes() {
                       className="w-20 px-2 py-1 border rounded-md"
                     />
                   </td>
-                  <td className="p-2">{row.practicasAsistidas}/{row.practicasTotal}</td>
+                  <td className="p-2">{row.incluyePracticas ? `${row.practicasAsistidas}/${row.practicasTotal}` : 'No aplica'}</td>
                   <td className="p-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={row.practicasPct}
-                      onChange={(e) => updatePercentage(row.perfil.id, 'practicasPct', Number(e.target.value))}
-                      className="w-20 px-2 py-1 border rounded-md"
-                    />
+                    {row.incluyePracticas ? (
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={row.practicasPct}
+                        onChange={(e) => updatePercentage(row.perfil.id, 'practicasPct', Number(e.target.value))}
+                        className="w-20 px-2 py-1 border rounded-md"
+                      />
+                    ) : (
+                      <span className="text-gray-500">No aplica</span>
+                    )}
                   </td>
                   <td className="p-2">
                     <input
