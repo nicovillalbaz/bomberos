@@ -5,7 +5,7 @@ import { getServiciosByDateRange } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
 import { useAuth } from '../../hooks/useAuth'
 import { buildPresenceIntervals, resolveGuardiaAttendance, type PresenceEvent } from '../../lib/attendance'
-import { getGuardiaInterval, getMonthRange, isDateFinished, isGuardiaFinalizada, toMonthInputValue } from '../../lib/datetime'
+import { getGuardiaInterval, getPreviousMonthRange, isDateFinished, isGuardiaFinalizada } from '../../lib/datetime'
 import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
 import type { Asistencia, Guardia, Perfil, Servicio } from '../../types'
 
@@ -62,6 +62,7 @@ const guardiaTienePersona = (guardia: GuardiaConMiembros, perfilId: string) =>
   guardia.conductor_id === perfilId ||
   (guardia.miembros || []).some((item) => getMiembroPerfil(item)?.id === perfilId)
 
+// Citaciones y prácticas usan servicio_personal como fuente actual de asistencia/participación.
 const servicioTienePersona = (servicio: Servicio, perfilId: string) =>
   (servicio.personal || []).some((item) => item.persona_id === perfilId)
 
@@ -84,7 +85,6 @@ const clampPercent = (value: number) => {
 export default function Reportes() {
   const { isOfficialOrAdmin } = useAuth()
   const [activeTab, setActiveTab] = useState<ReportTab>('porcentajes')
-  const [month, setMonth] = useState(toMonthInputValue())
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [guardias, setGuardias] = useState<GuardiaConMiembros[]>([])
@@ -97,7 +97,9 @@ export default function Reportes() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const range = useMemo(() => getMonthRange(month), [month])
+  const reportMonth = useMemo(() => getPreviousMonthRange(), [])
+  const month = reportMonth.monthValue
+  const range = useMemo(() => ({ desde: reportMonth.desde, hasta: reportMonth.hasta }), [reportMonth])
   const presenceIntervals = useMemo(() => buildPresenceIntervals(presenceEvents), [presenceEvents])
 
   const load = async () => {
@@ -220,9 +222,8 @@ export default function Reportes() {
   }, [servicios])
 
   const monthLabel = useMemo(() => {
-    const [year, monthNumber] = month.split('-').map(Number)
-    return new Date(year, monthNumber - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-  }, [month])
+    return reportMonth.label
+  }, [reportMonth])
 
   const updatePercentage = (perfilId: string, field: keyof PercentageFields, value: number) => {
     const row = visiblePercentageRows.find((item) => item.perfil.id === perfilId)
@@ -292,18 +293,13 @@ export default function Reportes() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reportes</h1>
-          <p className="text-sm text-gray-500">Vista operativa de {monthLabel}</p>
+          <p className="text-sm text-gray-500">Reporte del mes anterior: {monthLabel}</p>
         </div>
         <div className="surface p-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-gray-600">Mes</span>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value || toMonthInputValue())}
-              className="px-3 py-2 border rounded-lg"
-            />
-          </label>
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-gray-600">Período</span>
+            <span className="px-3 py-2 border rounded-lg bg-gray-50 text-gray-700">{range.desde} a {range.hasta}</span>
+          </div>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-gray-600">Formato</span>
             <select

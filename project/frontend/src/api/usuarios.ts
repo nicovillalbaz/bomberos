@@ -1,5 +1,11 @@
-﻿import { supabase } from '../lib/supabase'
+import { getSessionProfile, supabase } from '../lib/supabase'
 import type { Perfil, PerfilCreate } from '../types'
+
+const assertAdmin = () => {
+  if (getSessionProfile()?.rol !== 'admin') {
+    throw new Error('No tenés permisos para administrar usuarios')
+  }
+}
 
 export const getPerfiles = async () => {
   const { data, error } = await (supabase as any).from('perfiles').select('*').order('apellido')
@@ -32,7 +38,9 @@ export const getOficiales = async () => {
 }
 
 export const createPerfil = async (perfil: PerfilCreate) => {
-  const { data, error } = await (supabase as any).rpc('create_perfil', {
+  assertAdmin()
+
+  const { data: createdId, error } = await (supabase as any).rpc('create_perfil', {
     p_nombre: perfil.nombre,
     p_apellido: perfil.apellido,
     p_email: perfil.email,
@@ -41,18 +49,32 @@ export const createPerfil = async (perfil: PerfilCreate) => {
     p_estado: perfil.estado || 'activo',
   })
   if (error) throw error
-  return data
+
+  const { data, error: updateError } = await (supabase as any)
+    .from('perfiles')
+    .update({
+      codigo_interno: perfil.codigo_interno || null,
+      es_conductor_habilitado: Boolean(perfil.es_conductor_habilitado),
+      es_oficial_autorizante: Boolean(perfil.es_oficial_autorizante),
+    })
+    .eq('id', createdId)
+    .select()
+    .single()
+  if (updateError) throw updateError
+
+  return data as Perfil
 }
 
 export const updatePerfil = async (id: string, updates: Partial<Perfil>) => {
+  assertAdmin()
   const { data, error } = await (supabase as any).from('perfiles').update(updates).eq('id', id).select().single()
   if (error) throw error
-  return data
+  return data as Perfil
 }
 
 export const toggleUserStatus = async (id: string, estado: 'activo' | 'inactivo') => {
+  assertAdmin()
   const { data, error } = await (supabase as any).from('perfiles').update({ estado }).eq('id', id).select().single()
   if (error) throw error
-  return data
+  return data as Perfil
 }
-

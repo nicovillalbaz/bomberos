@@ -4,6 +4,8 @@ Backend completo para el sistema de gestión del cuartel de bomberos. Basado en 
 
 ## Estructura del Backend
 
+> Nota: la app web actual usa `project/frontend/src/api` y llama directo a Supabase. La carpeta `project/backend/api` queda como código legado/documentación técnica y no forma parte del build del frontend.
+
 ### 📁 database/
 Archivos SQL para ejecutar en Supabase SQL Editor **en orden**:
 

@@ -103,6 +103,24 @@ export default function Servicios() {
     return { rows: [...rows, { tipo: 'TOTAL', total: serviciosMes.length }], monthValue }
   }
 
+  const getPreviousMonthServiceDetailRows = async () => {
+    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const data = await getServiciosByDateRange('completo', desde, hasta)
+    const rows = data
+      .filter((s) => s.tipo !== 'citacion' && s.tipo !== 'practica')
+      .map((s) => ({
+        fecha: formatDateOnly(s.fecha),
+        tipo: s.tipo,
+        lugar: s.lugar ?? '',
+        movil: s.movil?.nombre ?? '',
+        a_cargo: s.a_cargo ? `${s.a_cargo.nombre} ${s.a_cargo.apellido}` : '',
+        conductor: s.conductor ? `${s.conductor.nombre} ${s.conductor.apellido}` : (s.conductor_rentado_nombre ?? ''),
+        descripcion: s.descripcion ?? '',
+      }))
+
+    return { rows, monthValue }
+  }
+
   const exportResumenCSV = async () => {
     const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
     exportRowsToCSV(rows, `resumen_servicios_${monthValue}.csv`)
@@ -114,12 +132,12 @@ export default function Servicios() {
   }
 
   const exportServiciosMesCSV = async () => {
-    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    const { rows, monthValue } = await getPreviousMonthServiceDetailRows()
     exportRowsToCSV(rows, `servicios_mes_${monthValue}.csv`)
   }
 
   const exportServiciosMesPDF = async () => {
-    const { rows, monthValue } = await getPreviousMonthServiceSummaryRows()
+    const { rows, monthValue } = await getPreviousMonthServiceDetailRows()
     exportRowsToPrintablePDF(`Servicios mes anterior ${monthValue}`, rows)
   }
 

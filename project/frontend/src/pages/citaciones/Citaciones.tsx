@@ -221,7 +221,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
               <th className="p-2">Lugar</th>
               <th className="p-2">A cargo</th>
               <th className="p-2">Asistentes</th>
-              <th className="p-2">Accion</th>
+              <th className="p-2">Acción</th>
             </tr>
           </thead>
           <tbody>

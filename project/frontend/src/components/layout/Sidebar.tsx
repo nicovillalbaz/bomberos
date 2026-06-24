@@ -26,7 +26,7 @@ export default function Sidebar() {
     <aside className="w-64 bg-white text-gray-900 min-h-screen flex-col hidden md:flex border-r border-gray-200">
       <div className="px-4 py-4 border-b border-gray-200">
         <h1 className="text-base font-bold">Bomberos</h1>
-        <p className="text-xs text-gray-500">Gestion operativa</p>
+        <p className="text-xs text-gray-500">Gestión operativa</p>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {filteredItems.map((item) => (

@@ -223,7 +223,7 @@ function TransferToUbicacionView({
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr><td className="p-3 text-gray-500" colSpan={3}>No hay material con stock en esta ubicacion.</td></tr>
+                <tr><td className="p-3 text-gray-500" colSpan={3}>No hay material con stock en esta ubicación.</td></tr>
               ) : data.map((r) => (
                 <tr key={r.material_id} className="border-t">
                   <td className="p-2">{r.material?.nombre}</td>
@@ -259,7 +259,7 @@ function TransferToUbicacionView({
                   <th className="p-2">Stock en {titulo}</th>
                   <th className="p-2">Origen</th>
                   <th className="p-2">Cant</th>
-                  <th className="p-2">Accion</th>
+                  <th className="p-2">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,7 +269,7 @@ function TransferToUbicacionView({
                   const origenTipo = origen[m.id] || origenOpciones[0]
                   const movilId = origenMovil[m.id] || ''
                   const max = getMaxCantidad(m.id)
-                  const stockTexto = Number.isFinite(max) ? String(max) : 'Sin limite'
+                  const stockTexto = Number.isFinite(max) ? String(max) : 'Sin límite'
                   const qty = cantidad[m.id] || 0
 
                   return (
@@ -463,7 +463,7 @@ function AjustesMovimientosView() {
         <input placeholder="Observación" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="sm:col-span-3 px-3 py-2 border rounded-lg" />
         <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Registrar movimiento</button>
       </form>
-      <p className="text-sm text-gray-600">Usá este formulario para registrar donaciónes (origen externo) y bajas por rotura/descarte (destino baja o consumo).</p>
+      <p className="text-sm text-gray-600">Usá este formulario para registrar donaciones (origen externo) y bajas por rotura/descarte (destino baja o consumo).</p>
     </div>
   )
 }

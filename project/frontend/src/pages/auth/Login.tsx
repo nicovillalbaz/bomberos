@@ -23,7 +23,7 @@ export default function Login() {
     try {
       const profileData = await loginWithPassword(email, password)
       if (!profileData) {
-        setError('Credenciales invalidas')
+        setError('Credenciales inválidas')
         return
       }
       await refreshProfile()
@@ -54,7 +54,7 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Contrasena</label>
+            <label className="block text-sm font-medium mb-1">Contraseña</label>
             <input
               type="password"
               value={password}

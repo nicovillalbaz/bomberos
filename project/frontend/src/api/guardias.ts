@@ -1,5 +1,12 @@
-﻿import { getSessionUserId, supabase } from '../lib/supabase'
+import { getSessionProfile, getSessionUserId, supabase } from '../lib/supabase'
 import type { Asistencia, AsistenciaCreate, Guardia, GuardiaCreate } from '../types'
+
+const assertOfficialOrAdmin = () => {
+  const rol = getSessionProfile()?.rol
+  if (rol !== 'oficial' && rol !== 'admin') {
+    throw new Error('No tenés permisos para administrar guardias')
+  }
+}
 
 export const getGuardias = async (fecha?: string, fechaDesde?: string, fechaHasta?: string) => {
   let query = (supabase as any)
@@ -15,6 +22,7 @@ export const getGuardias = async (fecha?: string, fechaDesde?: string, fechaHast
 }
 
 export const createGuardia = async (guardia: GuardiaCreate) => {
+  assertOfficialOrAdmin()
   const actorId = getSessionUserId()
   if (!actorId) throw new Error('No hay sesión activa')
 
@@ -34,6 +42,7 @@ export const createGuardia = async (guardia: GuardiaCreate) => {
 }
 
 export const createMultipleGuardias = async (guardias: GuardiaCreate[]) => {
+  assertOfficialOrAdmin()
   const created: Guardia[] = []
   for (const guardia of guardias) {
     const data = await createGuardia(guardia)
@@ -85,6 +94,7 @@ export const setGuardiaAttendanceOverride = async (
   usuarioId: string,
   estado: 'auto' | 'presente' | 'ausente',
 ) => {
+  assertOfficialOrAdmin()
   const actorId = getSessionUserId()
   if (!actorId) throw new Error('No hay sesión activa')
 

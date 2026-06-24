@@ -3,7 +3,7 @@ import { getAsistenciasForGuardias, getGuardias, markAsistencia } from '../../ap
 import { getServiciosByDateRange } from '../../api/servicios'
 import { useAuth } from '../../hooks/useAuth'
 import { getManualGuardiaState } from '../../lib/attendance'
-import { formatDateOnly, getCurrentMonthRange } from '../../lib/datetime'
+import { formatDateOnly, getCurrentMonthRange, getGuardiaInterval } from '../../lib/datetime'
 import type { Asistencia, Guardia, Perfil, Servicio } from '../../types'
 
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
@@ -17,6 +17,8 @@ type ActividadRow = {
   titulo: string
   detalle: string
   estado: string
+  estadoColor: string
+  canMarkAttendance: boolean
   guardia?: GuardiaConMiembros
 }
 
@@ -47,10 +49,13 @@ const getServicioKind = (servicio: Servicio): ActividadRow['kind'] => {
 }
 
 const getServicioTitulo = (servicio: Servicio) => {
-  if (servicio.tipo === 'citacion') return 'Citacion'
-  if (servicio.tipo === 'practica') return 'Practica'
+  if (servicio.tipo === 'citacion') return 'Citación'
+  if (servicio.tipo === 'practica') return 'Práctica'
   return `Servicio: ${servicio.tipo}`
 }
+
+const getEstadoServicioColor = (estado: string) =>
+  estado === 'completo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
 
 export default function MisActividades() {
   const { profile } = useAuth()
@@ -93,9 +98,19 @@ export default function MisActividades() {
 
   const rows = useMemo<ActividadRow[]>(() => {
     if (!profile?.id) return []
+    const now = new Date()
 
     const guardiaRows: ActividadRow[] = guardias.map((guardia) => {
       const asistencia = getManualGuardiaState(asistencias, guardia.id, profile.id)
+      const { inicio } = getGuardiaInterval(guardia)
+      const canMarkAttendance = asistencia !== 'presente' && inicio <= now
+      const estado = asistencia === 'presente' ? 'Asistido' : canMarkAttendance ? 'Disponible' : 'Pendiente'
+      const estadoColor = asistencia === 'presente'
+        ? 'bg-green-100 text-green-800'
+        : canMarkAttendance
+          ? 'bg-blue-100 text-blue-800'
+          : 'bg-yellow-100 text-yellow-800'
+
       return {
         id: `guardia-${guardia.id}`,
         kind: 'guardia',
@@ -106,7 +121,9 @@ export default function MisActividades() {
           getNombre(guardia.a_cargo) ? `A cargo: ${getNombre(guardia.a_cargo)}` : '',
           getNombre(guardia.conductor) ? `Conductor: ${getNombre(guardia.conductor)}` : '',
         ].filter(Boolean).join(' | ') || 'Guardia asignada',
-        estado: asistencia === 'presente' ? 'Asistido' : 'Pendiente',
+        estado,
+        estadoColor,
+        canMarkAttendance,
         guardia,
       }
     })
@@ -123,6 +140,8 @@ export default function MisActividades() {
         servicio.descripcion || '',
       ].filter(Boolean).join(' | ') || 'Actividad asignada',
       estado: servicio.estado,
+      estadoColor: getEstadoServicioColor(servicio.estado),
+      canMarkAttendance: false,
     }))
 
     return [...guardiaRows, ...servicioRows].sort((a, b) => {
@@ -133,6 +152,11 @@ export default function MisActividades() {
   }, [asistencias, guardias, profile?.id, servicios])
 
   const markGuardia = async (guardia: GuardiaConMiembros) => {
+    if (getGuardiaInterval(guardia).inicio > new Date()) {
+      setError('La asistencia solo puede marcarse cuando la guardia está en curso o ya pasó.')
+      return
+    }
+
     setSavingId(guardia.id)
     setError('')
     try {
@@ -191,7 +215,7 @@ export default function MisActividades() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td className="p-3 text-gray-500" colSpan={6}>No tenes actividades asignadas este mes.</td></tr>
+              <tr><td className="p-3 text-gray-500" colSpan={6}>No tenés actividades asignadas este mes.</td></tr>
             ) : rows.map((row) => (
               <tr key={row.id} className="border-t">
                 <td className="p-2 whitespace-nowrap">{formatDateOnly(row.fecha)}<div className="text-xs text-gray-500">{row.horario}</div></td>
@@ -199,12 +223,12 @@ export default function MisActividades() {
                 <td className="p-2 font-medium">{row.titulo}</td>
                 <td className="p-2 text-gray-600">{row.detalle}</td>
                 <td className="p-2 text-center">
-                  <span className={`px-2 py-1 rounded text-xs ${row.estado === 'Asistido' || row.estado === 'completo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                  <span className={`px-2 py-1 rounded text-xs ${row.estadoColor}`}>
                     {row.estado}
                   </span>
                 </td>
                 <td className="p-2 text-right">
-                  {row.guardia && row.estado !== 'Asistido' && (
+                  {row.guardia && row.canMarkAttendance && (
                     <button
                       onClick={() => markGuardia(row.guardia as GuardiaConMiembros)}
                       disabled={savingId === row.guardia.id}

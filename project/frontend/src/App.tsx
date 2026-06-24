@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import ProtectedRoute from './components/layout/ProtectedRoute'
+import RoleRoute from './components/layout/RoleRoute'
 import AppLayout from './components/layout/AppLayout'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
@@ -33,8 +34,12 @@ function App() {
               <Route path="/citaciones" element={<Citaciones />} />
               <Route path="/practicas" element={<Practicas />} />
               <Route path="/novedades" element={<Novedades />} />
-              <Route path="/reportes" element={<Reportes />} />
-              <Route path="/usuarios" element={<Usuarios />} />
+              <Route element={<RoleRoute roles={['oficial', 'admin']} />}>
+                <Route path="/reportes" element={<Reportes />} />
+              </Route>
+              <Route element={<RoleRoute roles={['admin']} />}>
+                <Route path="/usuarios" element={<Usuarios />} />
+              </Route>
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
