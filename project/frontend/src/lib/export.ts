@@ -39,7 +39,7 @@ export const exportRowsToPrintablePDF = (title: string, rows: ExportRow[]) => {
   )
 }
 
-export const exportTableToPrintablePDF = (title: string, headers: string[], rows: string[][]) => {
+const exportTableToPrintablePDF = (title: string, headers: string[], rows: string[][]) => {
   const htmlRows = rows
     .map((row) => `<tr>${row.map((cell) => `<td style="border:1px solid #ccc;padding:6px;">${cell}</td>`).join('')}</tr>`)
     .join('')

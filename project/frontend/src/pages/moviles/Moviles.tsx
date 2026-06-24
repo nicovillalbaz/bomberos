@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Vehiculo, TipoVehiculo, EstadoVehiculo } from '../../types'
 import { getVehiculos, createVehiculo, updateVehiculo, deleteVehiculo } from '../../api/vehiculos'
+import { useAuth } from '../../hooks/useAuth'
 
 export default function Moviles() {
+  const { isOfficialOrAdmin } = useAuth()
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -36,9 +38,11 @@ export default function Moviles() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Móviles</h1>
-        <button onClick={() => { setEditing(null); setForm({ nombre: '', dominio: '', marca: '', modelo: '', anio: 0, tipo: 'camion', estado: 'disponible' }); setShowForm(true) }} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Nuevo</button>
+        {isOfficialOrAdmin && (
+          <button onClick={() => { setEditing(null); setForm({ nombre: '', dominio: '', marca: '', modelo: '', anio: 0, tipo: 'camion', estado: 'disponible' }); setShowForm(true) }} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Nuevo</button>
+        )}
       </div>
-      {showForm && (
+      {isOfficialOrAdmin && showForm && (
         <div className="surface p-4">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input required placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} className="px-3 py-2 border rounded-lg" />
@@ -62,7 +66,7 @@ export default function Moviles() {
       {loading ? <p>Cargando...</p> : (
         <div className="surface overflow-auto">
           <table className="w-full text-sm min-w-[760px]">
-            <thead className="bg-gray-50"><tr><th className="p-2 text-left">Nombre</th><th>Dominio</th><th>Tipo</th><th>Estado</th><th>KM</th><th></th></tr></thead>
+            <thead className="bg-gray-50"><tr><th className="p-2 text-left">Nombre</th><th>Dominio</th><th>Tipo</th><th>Estado</th><th>KM</th>{isOfficialOrAdmin && <th></th>}</tr></thead>
             <tbody>
               {vehiculos.map(v => (
                 <tr key={v.id} className="border-t">
@@ -71,10 +75,12 @@ export default function Moviles() {
                   <td className="p-2 capitalize">{v.tipo.replace('_', ' ')}</td>
                   <td className="p-2"><span className={`px-2 py-1 rounded text-xs ${v.estado === 'disponible' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{v.estado.replace('_', ' ')}</span></td>
                   <td className="p-2">{v.ultimo_km}</td>
-                  <td className="p-2 flex gap-2">
-                    <button onClick={() => handleEdit(v)} className="text-blue-600 text-xs">Editar</button>
-                    <button onClick={() => handleDelete(v.id)} className="text-red-600 text-xs">Eliminar</button>
-                  </td>
+                  {isOfficialOrAdmin && (
+                    <td className="p-2 flex gap-2">
+                      <button onClick={() => handleEdit(v)} className="text-blue-600 text-xs">Editar</button>
+                      <button onClick={() => handleDelete(v.id)} className="text-red-600 text-xs">Eliminar</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

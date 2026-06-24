@@ -5,12 +5,11 @@ import { getServiciosByDateRange } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
 import { useAuth } from '../../hooks/useAuth'
 import { buildPresenceIntervals, resolveGuardiaAttendance, type PresenceEvent } from '../../lib/attendance'
-import { getGuardiaInterval, getPreviousMonthRange, isDateFinished, isGuardiaFinalizada } from '../../lib/datetime'
+import { getGuardiaInterval, getMonthRange, isDateFinished, isGuardiaFinalizada, toMonthInputValue } from '../../lib/datetime'
 import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
 import type { Asistencia, Guardia, Perfil, Servicio } from '../../types'
 
 type ReportTab = 'porcentajes' | 'servicios'
-type ExportFormat = 'csv' | 'pdf'
 type PerfilCategoria = 'Combatiente' | 'Activo'
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
 type GuardiaConMiembros = Omit<Guardia, 'miembros'> & { miembros?: GuardiaMiembroItem[] }
@@ -49,6 +48,10 @@ const averagePercentages = (items: number[]) =>
 
 const getNombre = (perfil?: Perfil | null) => `${perfil?.apellido ?? ''} ${perfil?.nombre ?? ''}`.trim()
 
+const isSystemAdminProfile = (perfil: Perfil) =>
+  perfil.email?.toLowerCase() === 'admin@bomberos.local' ||
+  `${perfil.nombre} ${perfil.apellido}`.trim().toLowerCase() === 'admin sistema'
+
 const isGuardiaMiembroRelacion = (item: GuardiaMiembroItem): item is { miembro?: Perfil | null } =>
   Object.prototype.hasOwnProperty.call(item, 'miembro')
 
@@ -85,7 +88,7 @@ const clampPercent = (value: number) => {
 export default function Reportes() {
   const { isOfficialOrAdmin } = useAuth()
   const [activeTab, setActiveTab] = useState<ReportTab>('porcentajes')
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
+  const [month, setMonth] = useState(toMonthInputValue())
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [guardias, setGuardias] = useState<GuardiaConMiembros[]>([])
   const [asistencias, setAsistencias] = useState<Asistencia[]>([])
@@ -97,9 +100,7 @@ export default function Reportes() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const reportMonth = useMemo(() => getPreviousMonthRange(), [])
-  const month = reportMonth.monthValue
-  const range = useMemo(() => ({ desde: reportMonth.desde, hasta: reportMonth.hasta }), [reportMonth])
+  const range = useMemo(() => getMonthRange(month), [month])
   const presenceIntervals = useMemo(() => buildPresenceIntervals(presenceEvents), [presenceEvents])
 
   const load = async () => {
@@ -125,7 +126,7 @@ export default function Reportes() {
         getCompanyPresenceEvents(latestGuardiaEnd?.toISOString()),
       ])
 
-      setPerfiles(perfilesData)
+      setPerfiles(perfilesData.filter((perfil) => !isSystemAdminProfile(perfil)))
       setGuardias(guardiaData)
       setServicios(serviciosData)
       setCitaciones(citacionesData)
@@ -222,8 +223,9 @@ export default function Reportes() {
   }, [servicios])
 
   const monthLabel = useMemo(() => {
-    return reportMonth.label
-  }, [reportMonth])
+    const [year, monthNumber] = month.split('-').map(Number)
+    return new Date(year, monthNumber - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  }, [month])
 
   const updatePercentage = (perfilId: string, field: keyof PercentageFields, value: number) => {
     const row = visiblePercentageRows.find((item) => item.perfil.id === perfilId)
@@ -262,7 +264,7 @@ export default function Reportes() {
     borradores: row.borradores,
   }))
 
-  const handleExport = () => {
+  const handleExport = (format: 'csv' | 'pdf') => {
     const rows = activeTab === 'porcentajes' ? buildPercentageExportRows() : buildServiceExportRows()
     if (rows.length === 0) {
       setError('No hay datos para exportar en esta pestaña.')
@@ -270,7 +272,7 @@ export default function Reportes() {
     }
     const filename = activeTab === 'porcentajes' ? `porcentajes_${month}` : `servicios_${month}`
     const title = activeTab === 'porcentajes' ? `Porcentajes ${monthLabel}` : `Servicios ${monthLabel}`
-    if (exportFormat === 'pdf') {
+    if (format === 'pdf') {
       exportRowsToPrintablePDF(title, rows)
       return
     }
@@ -293,30 +295,31 @@ export default function Reportes() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reportes</h1>
-          <p className="text-sm text-gray-500">Reporte del mes anterior: {monthLabel}</p>
+          <p className="text-sm text-gray-500">Reporte de {monthLabel}</p>
         </div>
         <div className="surface p-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex flex-col gap-1 text-sm">
-            <span className="text-gray-600">Período</span>
-            <span className="px-3 py-2 border rounded-lg bg-gray-50 text-gray-700">{range.desde} a {range.hasta}</span>
-          </div>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-gray-600">Formato</span>
-            <select
-              value={exportFormat}
-              onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+            <span className="text-gray-600">Mes del reporte</span>
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value || toMonthInputValue())}
               className="px-3 py-2 border rounded-lg"
-            >
-              <option value="csv">CSV</option>
-              <option value="pdf">PDF</option>
-            </select>
+            />
           </label>
           <button
             type="button"
-            onClick={handleExport}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg"
+            onClick={() => handleExport('csv')}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg"
           >
-            Exportar
+            Exportar CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('pdf')}
+            className="px-4 py-2 bg-slate-700 text-white rounded-lg"
+          >
+            Exportar PDF
           </button>
         </div>
       </div>

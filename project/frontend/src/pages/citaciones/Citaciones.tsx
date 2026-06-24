@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Perfil, Servicio } from '../../types'
-import { createServicio, getServiciosByTipo, getServicioById, setServicioPersonal } from '../../api/servicios'
+import { createServicio, getServiciosByDateRange, getServicioById, setServicioPersonal } from '../../api/servicios'
 import { getActiveProfiles } from '../../api/usuarios'
+import { getMonthRange, toMonthInputValue } from '../../lib/datetime'
 
 const getNombres = (perfil?: Perfil | null) =>
   `${perfil?.nombre ?? ''} ${perfil?.apellido ?? ''}`.trim()
+
+type RentadoForm = { nombre: string; codigo: string }
+
+const initialRentado: RentadoForm = { nombre: '', codigo: '' }
 
 type BaseProps = {
   tipo: string
@@ -16,11 +21,12 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [detalle, setDetalle] = useState<Servicio | null>(null)
   const [asistentes, setAsistentes] = useState<string[]>([])
+  const [asistentesRentados, setAsistentesRentados] = useState<RentadoForm[]>([])
+  const [rentadoActual, setRentadoActual] = useState<RentadoForm>(initialRentado)
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [filtro, setFiltro] = useState('')
   const [miembroSearch, setMiembroSearch] = useState('')
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
+  const [periodMonth, setPeriodMonth] = useState(toMonthInputValue())
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     fecha: '',
@@ -28,10 +34,11 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
     descripcion: '',
   })
   const [saving, setSaving] = useState(false)
+  const range = useMemo(() => getMonthRange(periodMonth), [periodMonth])
 
   const load = async () => {
     const [datos, perfilesData] = await Promise.all([
-      getServiciosByTipo(tipo),
+      getServiciosByDateRange(undefined, range.desde, range.hasta, tipo),
       getActiveProfiles(),
     ])
     setEventos(datos)
@@ -40,26 +47,22 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
 
   useEffect(() => {
     load()
-  }, [tipo])
+  }, [tipo, range.desde, range.hasta])
 
   const loadDetalle = async (servicioId: string) => {
     const data = await getServicioById(servicioId)
     setDetalle(data)
     setDetalleOpen(true)
     setAsistentes((data.personal || []).map((p) => p.persona_id).filter(Boolean) as string[])
+    setAsistentesRentados((data.personal || [])
+      .filter((p) => p.es_rentado)
+      .map((p) => ({ nombre: p.persona_nombre ?? '', codigo: p.persona_codigo ?? '' }))
+      .filter((p) => p.nombre && p.codigo))
   }
-
-  const eventosFiltrados = useMemo(() => {
-    return eventos.filter((e) => {
-      if (fechaDesde && new Date(e.fecha).toISOString().split('T')[0] < fechaDesde) return false
-      if (fechaHasta && new Date(e.fecha).toISOString().split('T')[0] > fechaHasta) return false
-      return true
-    })
-  }, [eventos, fechaDesde, fechaHasta])
 
   const eventosFiltradosConTexto = useMemo(() => {
     const needle = filtro.toLowerCase().trim()
-    return eventosFiltrados.filter((e) => {
+    return eventos.filter((e) => {
       if (!needle) return true
       const texto = [
         getNombres(e.a_cargo),
@@ -68,7 +71,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
       ].join(' ').toLowerCase()
       return texto.includes(needle)
     })
-  }, [eventosFiltrados, filtro])
+  }, [eventos, filtro])
 
   const asistentesFiltrados = useMemo(() => {
     const needle = miembroSearch.toLowerCase().trim()
@@ -81,6 +84,18 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
     setAsistentes((prev) => (
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     ))
+  }
+
+  const addRentado = () => {
+    const nombre = rentadoActual.nombre.trim()
+    const codigo = rentadoActual.codigo.trim()
+    if (!nombre || !codigo) return
+    setAsistentesRentados((prev) => [...prev, { nombre, codigo }])
+    setRentadoActual(initialRentado)
+  }
+
+  const removeRentado = (index: number) => {
+    setAsistentesRentados((prev) => prev.filter((_, i) => i !== index))
   }
 
   const crearEvento = async (e: FormEvent) => {
@@ -112,19 +127,30 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
     try {
       await setServicioPersonal(
         detalle.id,
-        asistentes.map((id) => ({ persona_id: id }))
+        [
+          ...asistentes.map((id) => ({ persona_id: id, es_rentado: false })),
+          ...asistentesRentados.map((rentado) => ({
+            persona_nombre: rentado.nombre,
+            persona_codigo: rentado.codigo,
+            es_rentado: true,
+          })),
+        ]
       )
       const actual = await getServicioById(detalle.id)
       setDetalle(actual)
       setEventos((prev) => prev.map((s) => (s.id === actual.id ? actual : s)))
       setAsistentes((actual.personal || []).map((p) => p.persona_id).filter(Boolean) as string[])
+      setAsistentesRentados((actual.personal || [])
+        .filter((p) => p.es_rentado)
+        .map((p) => ({ nombre: p.persona_nombre ?? '', codigo: p.persona_codigo ?? '' }))
+        .filter((p) => p.nombre && p.codigo))
     } finally {
       setSaving(false)
     }
   }
 
   const detalleResumen = detalle
-    ? `Asistieron ${asistentes.length} / ${perfiles.length}`
+    ? `Asistieron ${asistentes.length + asistentesRentados.length}`
     : ''
 
   return (
@@ -139,27 +165,22 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
         </button>
       </div>
 
-      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <input
-          type="date"
-          value={fechaDesde}
-          onChange={(e) => setFechaDesde(e.target.value)}
-          className="px-3 py-2 border rounded-lg"
-          placeholder="Desde"
-        />
-        <input
-          type="date"
-          value={fechaHasta}
-          onChange={(e) => setFechaHasta(e.target.value)}
-          className="px-3 py-2 border rounded-lg"
-          placeholder="Hasta"
-        />
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del período</span>
+          <input
+            type="month"
+            value={periodMonth}
+            onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())}
+            className="px-3 py-2 border rounded-lg"
+          />
+        </label>
         <input
           type="text"
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           placeholder="Buscar por a cargo"
-          className="px-3 py-2 border rounded-lg sm:col-span-2"
+          className="px-3 py-2 border rounded-lg"
         />
       </div>
 
@@ -290,6 +311,33 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
                   <span>{p.nombre} {p.apellido}</span>
                 </label>
               ))}
+            </div>
+            <div className="border rounded-lg p-3 space-y-3">
+              <p className="text-sm font-medium">Asistentes rentados</p>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                <input
+                  placeholder="Nombre rentado"
+                  value={rentadoActual.nombre}
+                  onChange={(e) => setRentadoActual((prev) => ({ ...prev, nombre: e.target.value }))}
+                  className="px-3 py-2 border rounded-lg"
+                />
+                <input
+                  placeholder="Código rentado"
+                  value={rentadoActual.codigo}
+                  onChange={(e) => setRentadoActual((prev) => ({ ...prev, codigo: e.target.value }))}
+                  className="px-3 py-2 border rounded-lg"
+                />
+                <button type="button" onClick={addRentado} className="px-3 py-2 bg-gray-200 rounded-lg">Agregar</button>
+              </div>
+              {asistentesRentados.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {asistentesRentados.map((rentado, index) => (
+                    <button key={`${rentado.codigo}-${index}`} type="button" onClick={() => removeRentado(index)} className="px-2 py-1 rounded bg-gray-100 text-xs">
+                      {rentado.nombre} - {rentado.codigo} ×
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               type="submit"

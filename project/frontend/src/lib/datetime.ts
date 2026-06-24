@@ -34,16 +34,6 @@ export const getMonthRange = (monthValue: string) => {
   }
 }
 
-export const getPreviousMonthRange = (date = new Date()) => {
-  const previousMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1)
-  const range = getMonthRange(toMonthInputValue(previousMonth))
-  return {
-    ...range,
-    monthValue: toMonthInputValue(previousMonth),
-    label: previousMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }),
-  }
-}
-
 export const getCurrentMonthRange = (date = new Date()) => {
   const range = getMonthRange(toMonthInputValue(date))
   return {

@@ -1,5 +1,5 @@
 import { getSessionUserId, supabase } from '../lib/supabase'
-import type { Servicio, ServicioCreate, ServicioPersonal, ServicioPersonalCreate } from '../types'
+import type { Servicio, ServicioCreate, ServicioPersonalCreate } from '../types'
 
 const servicioSelect = `
   *,
@@ -108,7 +108,7 @@ export const getServicioById = async (id: string) => {
 
 export const setServicioPersonal = async (
   servicioId: string,
-  miembros: Array<{ persona_id: string; rol_en_servicio?: ServicioPersonal['rol_en_servicio'] }>,
+  miembros: ServicioPersonalCreate[],
 ) => {
   const { error: delError } = await (supabase as any)
     .from('servicio_personal')
@@ -120,8 +120,10 @@ export const setServicioPersonal = async (
 
   const personalData = miembros.map((m) => ({
     servicio_id: servicioId,
-    persona_id: m.persona_id,
-    es_rentado: false,
+    persona_id: m.persona_id ?? null,
+    persona_nombre: m.persona_nombre ?? null,
+    persona_codigo: m.persona_codigo ?? null,
+    es_rentado: Boolean(m.es_rentado),
     rol_en_servicio: m.rol_en_servicio || 'miembro',
   }))
   const { error: insError } = await (supabase as any).from('servicio_personal').insert(personalData)

@@ -3,7 +3,7 @@ import { createSalida, getLastSalidaByVehiculo, getSalidasByDateRange, updateSal
 import { getConductores, getOficiales } from '../../api/usuarios'
 import { getVehiculosDisponibles } from '../../api/vehiculos'
 import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
-import { getPreviousMonthRange } from '../../lib/datetime'
+import { getMonthRange, toMonthInputValue } from '../../lib/datetime'
 import type { Perfil, Salida, Vehiculo } from '../../types'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
@@ -12,6 +12,7 @@ const initialForm = {
   vehiculo_id: '',
   conductor_id: '',
   conductor_rentado_nombre: '',
+  conductor_rentado_codigo: '',
   destino: '',
   motivo: '',
   motivo_descripcion: '',
@@ -31,18 +32,17 @@ export default function Salidas() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Salida | null>(null)
   const [form, setForm] = useState(initialForm)
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
+  const [periodMonth, setPeriodMonth] = useState(toMonthInputValue())
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
 
   const isRentado = form.conductor_id === 'rentado'
   const isMotivoOtro = form.motivo.trim().toLowerCase() === 'otro'
 
   const load = async () => {
-    const data = await getSalidasByDateRange(fechaDesde || undefined, fechaHasta || undefined)
+    const { desde, hasta } = getMonthRange(periodMonth)
+    const data = await getSalidasByDateRange(desde, hasta)
     setSalidas(data)
   }
 
@@ -55,6 +55,9 @@ export default function Salidas() {
 
   useEffect(() => {
     load()
+  }, [periodMonth])
+
+  useEffect(() => {
     loadAux()
   }, [])
 
@@ -81,6 +84,7 @@ export default function Salidas() {
     if (form.km_salida < 0 || form.km_llegada < 0) return 'Los kilómetros no pueden ser negativos.'
     if (form.km_llegada < form.km_salida) return 'KM llegada debe ser mayor o igual a KM salida.'
     if (isRentado && !form.conductor_rentado_nombre.trim()) return 'Nombre de conductor rentado es obligatorio.'
+    if (isRentado && !form.conductor_rentado_codigo.trim()) return 'Código de conductor rentado es obligatorio.'
     if (isMotivoOtro && !form.motivo_descripcion.trim()) return 'Descripción de motivo es obligatoria para motivo Otro.'
     if (form.hay_combustible) {
       const monto = Number(form.monto_combustible)
@@ -101,6 +105,7 @@ export default function Salidas() {
       vehiculo_id: form.vehiculo_id,
       conductor_id: isRentado ? null : (form.conductor_id || null),
       conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
+      conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
       destino: form.destino,
       motivo: form.motivo,
       motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
@@ -126,6 +131,7 @@ export default function Salidas() {
       vehiculo_id: s.vehiculo_id,
       conductor_id: s.conductor_id ?? (s.conductor_rentado_nombre ? 'rentado' : ''),
       conductor_rentado_nombre: s.conductor_rentado_nombre ?? '',
+      conductor_rentado_codigo: s.conductor_rentado_codigo ?? '',
       destino: s.destino,
       motivo: s.motivo,
       motivo_descripcion: s.motivo_descripcion ?? '',
@@ -151,6 +157,7 @@ export default function Salidas() {
       vehiculo_id: form.vehiculo_id,
       conductor_id: isRentado ? null : (form.conductor_id || null),
       conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
+      conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
       destino: form.destino,
       motivo: form.motivo,
       motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
@@ -169,12 +176,13 @@ export default function Salidas() {
   }
 
   const getPreviousMonthSalidaRows = async () => {
-    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const { desde, hasta } = getMonthRange(periodMonth)
     const data = await getSalidasByDateRange(desde, hasta)
     const rows = data.map((s) => ({
       fecha: new Date(s.fecha_salida).toLocaleDateString(),
       vehiculo: s.vehiculo?.nombre ?? '',
       conductor: s.conductor ? `${s.conductor.nombre} ${s.conductor.apellido}` : (s.conductor_rentado_nombre ?? ''),
+      codigo_conductor: s.conductor ? (s.conductor.codigo_interno ?? '') : (s.conductor_rentado_codigo ?? ''),
       destino: s.destino,
       km_salida: s.km_salida,
       km_llegada: s.km_llegada ?? '',
@@ -182,7 +190,7 @@ export default function Salidas() {
       combustible: s.hay_combustible ? 'Sí' : 'No',
       oficial_autorizante: s.hay_combustible ? `${s.autorizacion?.nombre ?? ''} ${s.autorizacion?.apellido ?? ''}`.trim() : '',
     }))
-    return { rows, monthValue }
+    return { rows, monthValue: periodMonth }
   }
 
   const exportCSV = async () => {
@@ -195,8 +203,8 @@ export default function Salidas() {
     exportRowsToPrintablePDF(`Salidas ${monthValue}`, rows)
   }
 
-  const handleExport = async () => {
-    if (exportFormat === 'pdf') {
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (format === 'pdf') {
       await exportPDF()
       return
     }
@@ -208,19 +216,18 @@ export default function Salidas() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Salidas</h1>
         <div className="flex flex-wrap gap-2">
-          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
-            <option value="csv">CSV</option>
-            <option value="pdf">PDF</option>
-          </select>
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={handleExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
+          <button onClick={() => handleExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
           <button onClick={() => { setShowForm(true); setEditing(null); setForm(initialForm); setError(''); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva salida</button>
         </div>
       </div>
 
-      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="px-3 py-2 border rounded-lg" />
-        <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="px-3 py-2 border rounded-lg" />
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del reporte</span>
+          <input type="month" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
+        </label>
         <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} className="px-3 py-2 border rounded-lg">
           {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} filas</option>)}
         </select>
@@ -245,7 +252,10 @@ export default function Salidas() {
             </select>
 
             {isRentado && (
-              <input required placeholder="Nombre conductor rentado" value={form.conductor_rentado_nombre} onChange={(e) => setForm({ ...form, conductor_rentado_nombre: e.target.value })} className="px-3 py-2 border rounded-lg" />
+              <>
+                <input required placeholder="Nombre conductor rentado" value={form.conductor_rentado_nombre} onChange={(e) => setForm({ ...form, conductor_rentado_nombre: e.target.value })} className="px-3 py-2 border rounded-lg" />
+                <input required placeholder="Código conductor rentado" value={form.conductor_rentado_codigo} onChange={(e) => setForm({ ...form, conductor_rentado_codigo: e.target.value })} className="px-3 py-2 border rounded-lg" />
+              </>
             )}
 
             <input required placeholder="Destino" value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })} className="px-3 py-2 border rounded-lg" />
@@ -292,7 +302,11 @@ export default function Salidas() {
               <tr key={s.id} className="border-t">
                 <td className="p-2">{new Date(s.fecha_salida).toLocaleDateString()}</td>
                 <td className="p-2">{s.vehiculo?.nombre}</td>
-                <td className="p-2">{s.conductor ? `${s.conductor.nombre} ${s.conductor.apellido}` : s.conductor_rentado_nombre}</td>
+                <td className="p-2">
+                  {s.conductor
+                    ? `${s.conductor.nombre} ${s.conductor.apellido}`
+                    : [s.conductor_rentado_nombre, s.conductor_rentado_codigo].filter(Boolean).join(' - ')}
+                </td>
                 <td className="p-2">{s.destino}</td>
                 <td className="p-2">{s.km_salida}</td>
                 <td className="p-2">{s.km_llegada ?? '-'}</td>

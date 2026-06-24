@@ -8,7 +8,7 @@ import {
 } from '../../api/guardias'
 import { getCompanyPresenceEvents } from '../../api/novedades'
 import { getActiveProfiles } from '../../api/usuarios'
-import { exportRowsToCSV, exportRowsToPrintablePDF, exportTableToPrintablePDF } from '../../lib/export'
+import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
 import { useAuth } from '../../hooks/useAuth'
 import {
   buildPresenceIntervals,
@@ -21,9 +21,10 @@ import {
 import {
   formatDateOnly,
   getGuardiaInterval,
-  getPreviousMonthRange,
+  getMonthRange,
   isGuardiaFinalizada,
   parseDateOnly,
+  toMonthInputValue,
 } from '../../lib/datetime'
 
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
@@ -41,11 +42,30 @@ const getMiembroPerfil = (item: GuardiaMiembroItem): Perfil | null | undefined =
   return item
 }
 
-const getMiembrosTexto = (guardia: Pick<GuardiaConMiembros, 'miembros'>) =>
-  (guardia.miembros || [])
-    .map((item) => getNombre(getMiembroPerfil(item)))
-    .filter(Boolean)
-    .join(', ')
+const getGuardiaParticipantes = (guardia: GuardiaConMiembros) => {
+  const participantes = new Map<string, Perfil>()
+  const addPerfil = (perfil?: Perfil | null) => {
+    if (perfil?.id) participantes.set(perfil.id, perfil)
+  }
+
+  addPerfil(guardia.a_cargo)
+  addPerfil(guardia.conductor)
+  ;(guardia.miembros || []).forEach((item) => addPerfil(getMiembroPerfil(item)))
+
+  return [...participantes.values()]
+}
+
+const getMiembrosTexto = (guardia: GuardiaConMiembros) => {
+  const principales = new Set([guardia.a_cargo_id, guardia.conductor_id].filter(Boolean))
+  const miembros = new Map<string, Perfil>()
+
+  ;(guardia.miembros || []).forEach((item) => {
+    const perfil = getMiembroPerfil(item)
+    if (perfil?.id && !principales.has(perfil.id)) miembros.set(perfil.id, perfil)
+  })
+
+  return [...miembros.values()].map((perfil) => getNombre(perfil)).filter(Boolean).join(', ')
+}
 
 const getConductorTexto = (guardia: GuardiaConMiembros) =>
   getNombre(guardia.conductor) || guardia.conductor_rentado_nombre || '-'
@@ -57,24 +77,25 @@ export default function Guardias() {
   const [asistencias, setAsistencias] = useState<Asistencia[]>([])
   const [presenceEvents, setPresenceEvents] = useState<PresenceEvent[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
+  const [periodMonth, setPeriodMonth] = useState(toMonthInputValue())
   const [error, setError] = useState('')
   const [miembroSearch, setMiembroSearch] = useState('')
   const [selectedGuardia, setSelectedGuardia] = useState<GuardiaConMiembros | null>(null)
   const [attendanceEdits, setAttendanceEdits] = useState<Record<string, ManualAttendanceState>>({})
   const [attendanceInitial, setAttendanceInitial] = useState<Record<string, ManualAttendanceState>>({})
   const [attendanceSaving, setAttendanceSaving] = useState(false)
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv')
   const [form, setForm] = useState({
     fechas: [''],
     tipo: 'voluntaria' as TipoGuardia,
     a_cargo_id: '',
     conductor_id: '',
+    conductor_rentado_nombre: '',
+    conductor_rentado_codigo: '',
     miembros: [] as string[],
   })
 
   const isEspecial = form.tipo === 'especial'
+  const isConductorRentado = form.conductor_id === 'rentado'
 
   const getShiftTimes = (tipo: TipoGuardia, date: string) => {
     if (tipo === 'especial') return { hora_inicio: '00:00', hora_fin: '23:59' }
@@ -91,7 +112,8 @@ export default function Guardias() {
   }
 
   const load = async () => {
-    const data = await getGuardias(undefined, fechaDesde || undefined, fechaHasta || undefined)
+    const { desde, hasta } = getMonthRange(periodMonth)
+    const data = await getGuardias(undefined, desde, hasta)
     const guardiaData = data as GuardiaConMiembros[]
     setGuardias(guardiaData)
 
@@ -112,6 +134,9 @@ export default function Guardias() {
 
   useEffect(() => {
     load()
+  }, [periodMonth])
+
+  useEffect(() => {
     loadProfiles()
   }, [])
 
@@ -153,6 +178,10 @@ export default function Guardias() {
       setError('En guardia normal, a cargo y conductor son obligatorios.')
       return
     }
+    if (isConductorRentado && (!form.conductor_rentado_nombre.trim() || !form.conductor_rentado_codigo.trim())) {
+      setError('Para conductor rentado, nombre y código son obligatorios.')
+      return
+    }
 
     const payload = fechasValidas.map((fecha) => {
       const times = getShiftTimes(form.tipo, fecha)
@@ -161,8 +190,11 @@ export default function Guardias() {
         tipo: form.tipo,
         ...times,
         a_cargo_id: form.a_cargo_id || null,
-        conductor_id: form.conductor_id || null,
-        miembros: form.miembros,
+        conductor_id: isConductorRentado ? null : (form.conductor_id || null),
+        conductor_rentado_nombre: isConductorRentado ? form.conductor_rentado_nombre : null,
+        conductor_rentado_codigo: isConductorRentado ? form.conductor_rentado_codigo : null,
+        es_rentado: isConductorRentado,
+        miembros: form.miembros.filter((id) => id !== form.a_cargo_id && id !== form.conductor_id),
       }
     })
 
@@ -170,44 +202,18 @@ export default function Guardias() {
     setShowForm(false)
     setError('')
     setMiembroSearch('')
-    setForm({ fechas: [''], tipo: 'voluntaria', a_cargo_id: '', conductor_id: '', miembros: [] })
+    setForm({ fechas: [''], tipo: 'voluntaria', a_cargo_id: '', conductor_id: '', conductor_rentado_nombre: '', conductor_rentado_codigo: '', miembros: [] })
     load()
   }
 
   const getPreviousMonthGuardias = async () => {
-    const { desde, hasta, monthValue } = getPreviousMonthRange()
+    const { desde, hasta } = getMonthRange(periodMonth)
     const data = await getGuardias(undefined, desde, hasta)
     return {
-      monthValue,
+      monthValue: periodMonth,
       guardiasMes: (data as GuardiaConMiembros[])
         .sort((a, b) => parseDateOnly(a.fecha).getTime() - parseDateOnly(b.fecha).getTime()),
     }
-  }
-
-  const exportCSV = async () => {
-    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
-    exportRowsToCSV(guardiasMes.map((guardia) => ({
-      fecha: formatDateOnly(guardia.fecha),
-      tipo: guardia.tipo,
-      a_cargo: getNombre(guardia.a_cargo),
-      conductor: getConductorTexto(guardia),
-      miembros: getMiembrosTexto(guardia),
-    })), `guardias_${monthValue}.csv`)
-  }
-
-  const exportPDF = async () => {
-    const { guardiasMes, monthValue } = await getPreviousMonthGuardias()
-    exportTableToPrintablePDF(
-      `Reporte de Guardias ${monthValue}`,
-      ['Fecha', 'Tipo', 'A cargo', 'Conductor', 'Miembros'],
-      guardiasMes.map((guardia) => [
-        formatDateOnly(guardia.fecha),
-        guardia.tipo,
-        getNombre(guardia.a_cargo),
-        getConductorTexto(guardia),
-        getMiembrosTexto(guardia),
-      ])
-    )
   }
 
   const exportGuardiasMes = async () => {
@@ -222,7 +228,7 @@ export default function Guardias() {
       }))
 
     if (rows.length === 0) {
-      setError('No hay guardias para exportar en el mes anterior.')
+      setError('No hay guardias para exportar en el mes seleccionado.')
       return
     }
     exportRowsToCSV(rows, `guardias_mes_${monthValue}.csv`)
@@ -240,22 +246,14 @@ export default function Guardias() {
       }))
 
     if (rows.length === 0) {
-      setError('No hay guardias para exportar en el mes anterior.')
+      setError('No hay guardias para exportar en el mes seleccionado.')
       return
     }
-    exportRowsToPrintablePDF(`Guardias mes anterior ${monthValue}`, rows)
+    exportRowsToPrintablePDF(`Guardias ${monthValue}`, rows)
   }
 
-  const handleGeneralExport = async () => {
-    if (exportFormat === 'pdf') {
-      await exportPDF()
-      return
-    }
-    await exportCSV()
-  }
-
-  const handleGuardiasMesExport = async () => {
-    if (exportFormat === 'pdf') {
+  const handleGuardiasMesExport = async (format: 'csv' | 'pdf') => {
+    if (format === 'pdf') {
       await exportGuardiasMesPDF()
       return
     }
@@ -268,11 +266,13 @@ export default function Guardias() {
   }
 
   const getGuardiaAsistentesCount = (guardia: GuardiaConMiembros) =>
-    perfiles.filter((perfil) => resolveGuardiaAttendance(perfil.id, guardia, asistencias, presenceIntervals)).length
+    getGuardiaParticipantes(guardia)
+      .filter((perfil) => resolveGuardiaAttendance(perfil.id, guardia, asistencias, presenceIntervals)).length
 
   const openAttendanceEditor = (guardia: GuardiaConMiembros) => {
+    const participantes = getGuardiaParticipantes(guardia)
     const initial = Object.fromEntries(
-      perfiles.map((perfil) => [perfil.id, getManualGuardiaState(asistencias, guardia.id, perfil.id)])
+      participantes.map((perfil) => [perfil.id, getManualGuardiaState(asistencias, guardia.id, perfil.id)])
     ) as Record<string, ManualAttendanceState>
     setSelectedGuardia(guardia)
     setAttendanceInitial(initial)
@@ -304,18 +304,16 @@ export default function Guardias() {
     setAttendanceEdits({})
   }
 
+  const selectedGuardiaParticipantes = selectedGuardia ? getGuardiaParticipantes(selectedGuardia) : []
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <h1 className="text-2xl font-bold">Guardias</h1>
         <div className="flex flex-wrap gap-2">
-          <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value as 'csv' | 'pdf')} className="px-3 py-2 border rounded-lg">
-            <option value="csv">CSV</option>
-            <option value="pdf">PDF</option>
-          </select>
           <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={handleGeneralExport} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar</button>
-          <button onClick={handleGuardiasMesExport} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Guardias</button>
+          <button onClick={() => handleGuardiasMesExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleGuardiasMesExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
           {isOfficialOrAdmin && (
             <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
           )}
@@ -323,8 +321,10 @@ export default function Guardias() {
       </div>
 
       <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <input type="date" value={fechaDesde} onChange={(event) => setFechaDesde(event.target.value)} className="px-3 py-2 border rounded-lg" />
-        <input type="date" value={fechaHasta} onChange={(event) => setFechaHasta(event.target.value)} className="px-3 py-2 border rounded-lg" />
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del reporte</span>
+          <input type="month" value={periodMonth} onChange={(event) => setPeriodMonth(event.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
+        </label>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -360,7 +360,27 @@ export default function Guardias() {
             <select value={form.conductor_id} onChange={(event) => setForm({ ...form, conductor_id: event.target.value })} className="px-3 py-2 border rounded-lg">
               <option value="">{isEspecial ? 'Conductor (opcional)' : 'Conductor'}</option>
               {perfiles.filter((perfil) => perfil.es_conductor_habilitado).map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nombre} {perfil.apellido}</option>)}
+              <option value="rentado">Rentado</option>
             </select>
+
+            {isConductorRentado && (
+              <>
+                <input
+                  required
+                  placeholder="Nombre conductor rentado"
+                  value={form.conductor_rentado_nombre}
+                  onChange={(event) => setForm({ ...form, conductor_rentado_nombre: event.target.value })}
+                  className="px-3 py-2 border rounded-lg"
+                />
+                <input
+                  required
+                  placeholder="Código conductor rentado"
+                  value={form.conductor_rentado_codigo}
+                  onChange={(event) => setForm({ ...form, conductor_rentado_codigo: event.target.value })}
+                  className="px-3 py-2 border rounded-lg"
+                />
+              </>
+            )}
 
             <div className="sm:col-span-2">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
@@ -400,7 +420,6 @@ export default function Guardias() {
           <thead className="bg-gray-50">
             <tr>
               <th className="p-2 text-left">Fecha</th>
-              <th className="p-2">Tipo</th>
               <th className="p-2">A cargo</th>
               <th className="p-2">Conductor</th>
               <th className="p-2">Miembros</th>
@@ -411,15 +430,15 @@ export default function Guardias() {
           <tbody>
             {parsedGuardias.map((guardia) => {
               const finalizada = isGuardiaFinalizada(guardia)
+              const participantesCount = getGuardiaParticipantes(guardia).length
               return (
                 <tr key={guardia.id} className="border-t">
                   <td className="p-2">{formatDateOnly(guardia.fecha)}</td>
-                  <td className="p-2 capitalize">{guardia.tipo}</td>
                   <td className="p-2">{getNombre(guardia.a_cargo) || '-'}</td>
                   <td className="p-2">{getConductorTexto(guardia)}</td>
                   <td className="p-2">{guardia.miembrosTexto || '-'}</td>
                   <td className="p-2 text-center">
-                    {finalizada ? `${getGuardiaAsistentesCount(guardia)} / ${perfiles.length}` : 'Pendiente'}
+                    {finalizada ? `${getGuardiaAsistentesCount(guardia)} / ${participantesCount}` : 'Pendiente'}
                   </td>
                   <td className="p-2">
                     {isOfficialOrAdmin && finalizada && (
@@ -456,7 +475,11 @@ export default function Guardias() {
                 </tr>
               </thead>
               <tbody>
-                {perfiles.map((perfil) => {
+                {selectedGuardiaParticipantes.length === 0 ? (
+                  <tr>
+                    <td className="p-3 text-center text-gray-500" colSpan={4}>Esta guardia no tiene integrantes asignados.</td>
+                  </tr>
+                ) : selectedGuardiaParticipantes.map((perfil) => {
                   const automatico = getAutomaticAttendance(perfil.id, selectedGuardia)
                   const estado = attendanceEdits[perfil.id] || 'auto'
                   const resultado = estado === 'auto' ? automatico : estado === 'presente'
