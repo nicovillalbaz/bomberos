@@ -104,14 +104,14 @@ export default function Novedades() {
     await load()
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-bold">Novedades</h1>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva novedad</button>
-      </div>
+  if (showForm) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Nueva novedad</h1>
+          <p className="text-sm text-gray-500">Registrá una novedad manual con título, tipo y descripción.</p>
+        </div>
 
-      {showForm && (
         <div className="surface p-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <input required placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
@@ -123,13 +123,22 @@ export default function Novedades() {
               <option value="servicio">Servicio</option>
             </select>
             <textarea required placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
             </div>
           </form>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between">
+        <h1 className="text-2xl font-bold">Novedades</h1>
+        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva novedad</button>
+      </div>
 
       <div className="space-y-3">
         {novedades.map((n) => (

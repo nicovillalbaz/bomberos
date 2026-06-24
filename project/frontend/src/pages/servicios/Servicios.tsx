@@ -250,40 +250,14 @@ export default function Servicios() {
     await exportServiciosMesCSV()
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-        <h1 className="text-2xl font-bold">Servicios</h1>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={() => handleResumenExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Resumen CSV</button>
-          <button onClick={() => handleResumenExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Resumen PDF</button>
-          <button onClick={() => handleServiciosMesExport('csv')} className="px-3 py-2 bg-green-700 text-white rounded-lg">Detalle CSV</button>
-          <button onClick={() => handleServiciosMesExport('pdf')} className="px-3 py-2 bg-slate-800 text-white rounded-lg">Detalle PDF</button>
-          <button onClick={() => { setShowForm(true); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
+  if (showForm) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Nuevo servicio</h1>
+          <p className="text-sm text-gray-500">Cargá fecha, motivo, móvil y participantes.</p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 surface p-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-600">Mes del reporte</span>
-          <input type="month" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
-        </label>
-      </div>
-
-      <div className="flex gap-4">
-        {(['borrador', 'completo'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg ${tab === t ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}
-          >
-            {t === 'borrador' ? 'Borradores' : 'Completos'}
-          </button>
-        ))}
-      </div>
-
-      {showForm && (
         <div className="surface p-4">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} className="px-3 py-2 border rounded-lg" />
@@ -321,21 +295,12 @@ export default function Servicios() {
             <div className="sm:col-span-2">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                 <label className="text-sm font-medium">Miembros</label>
-                <input
-                  placeholder="Buscar miembro"
-                  value={miembroSearch}
-                  onChange={(e) => setMiembroSearch(e.target.value)}
-                  className="px-3 py-2 border rounded-lg sm:ml-auto sm:w-64"
-                />
+                <input placeholder="Buscar miembro" value={miembroSearch} onChange={(e) => setMiembroSearch(e.target.value)} className="px-3 py-2 border rounded-lg sm:ml-auto sm:w-64" />
               </div>
               <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                 {perfilesFiltrados.map((p) => (
                   <label key={p.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.miembros.includes(p.id)}
-                      onChange={() => toggleMiembro(p.id)}
-                    />
+                    <input type="checkbox" checked={form.miembros.includes(p.id)} onChange={() => toggleMiembro(p.id)} />
                     <span>{p.nombre} {p.apellido}</span>
                   </label>
                 ))}
@@ -345,18 +310,8 @@ export default function Servicios() {
             <div className="sm:col-span-2 border rounded-lg p-3 space-y-3">
               <p className="text-sm font-medium">Miembros rentados</p>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-                <input
-                  placeholder="Nombre rentado"
-                  value={form.rentadoActual.nombre}
-                  onChange={(e) => setForm({ ...form, rentadoActual: { ...form.rentadoActual, nombre: e.target.value } })}
-                  className="px-3 py-2 border rounded-lg"
-                />
-                <input
-                  placeholder="Código rentado"
-                  value={form.rentadoActual.codigo}
-                  onChange={(e) => setForm({ ...form, rentadoActual: { ...form.rentadoActual, codigo: e.target.value } })}
-                  className="px-3 py-2 border rounded-lg"
-                />
+                <input placeholder="Nombre rentado" value={form.rentadoActual.nombre} onChange={(e) => setForm({ ...form, rentadoActual: { ...form.rentadoActual, nombre: e.target.value } })} className="px-3 py-2 border rounded-lg" />
+                <input placeholder="Código rentado" value={form.rentadoActual.codigo} onChange={(e) => setForm({ ...form, rentadoActual: { ...form.rentadoActual, codigo: e.target.value } })} className="px-3 py-2 border rounded-lg" />
                 <button type="button" onClick={addRentado} className="px-3 py-2 bg-gray-200 rounded-lg">Agregar</button>
               </div>
               {form.rentados.length > 0 && (
@@ -369,19 +324,49 @@ export default function Servicios() {
                 </div>
               )}
             </div>
-            <textarea
-              placeholder="Descripción"
-              value={form.descripcion}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              className="px-3 py-2 border rounded-lg sm:col-span-2"
-            />
-            <div className="sm:col-span-2 flex gap-2">
+            <textarea placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="px-3 py-2 border rounded-lg sm:col-span-2" />
+            <div className="sm:col-span-2 flex flex-wrap gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
             </div>
           </form>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+        <h1 className="text-2xl font-bold">Servicios</h1>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
+          <button onClick={() => handleResumenExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Resumen CSV</button>
+          <button onClick={() => handleResumenExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Resumen PDF</button>
+          <button onClick={() => handleServiciosMesExport('csv')} className="px-3 py-2 bg-green-700 text-white rounded-lg">Detalle CSV</button>
+          <button onClick={() => handleServiciosMesExport('pdf')} className="px-3 py-2 bg-slate-800 text-white rounded-lg">Detalle PDF</button>
+          <button onClick={() => { setShowForm(true); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 surface p-4">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del reporte</span>
+          <input type="month" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
+        </label>
+      </div>
+
+      <div className="flex gap-4">
+        {(['borrador', 'completo'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-lg ${tab === t ? 'bg-primary-600 text-white' : 'bg-gray-200'}`}
+          >
+            {t === 'borrador' ? 'Borradores' : 'Completos'}
+          </button>
+        ))}
+      </div>
 
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[860px]">

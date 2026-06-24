@@ -211,34 +211,17 @@ export default function Salidas() {
     await exportCSV()
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Salidas</h1>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={() => handleExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
-          <button onClick={() => handleExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
-          <button onClick={() => { setShowForm(true); setEditing(null); setForm(initialForm); setError(''); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva salida</button>
-        </div>
-      </div>
-
-      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-600">Mes del reporte</span>
-          <input type="month" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
-        </label>
-        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} className="px-3 py-2 border rounded-lg">
-          {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} filas</option>)}
-        </select>
-      </div>
-
-      {showForm && (
-        <div className="surface p-4">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-gray-900">{editing ? 'Editar salida' : 'Nueva salida'}</h2>
+  if (showForm) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">{editing ? 'Editar salida' : 'Nueva salida'}</h1>
             <p className="text-sm text-gray-500">Cargá móvil, conductor, kilómetros y combustible en un solo paso.</p>
           </div>
+        </div>
+
+        <div className="surface p-4">
           <form onSubmit={editing ? handleUpdate : handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <select required value={form.vehiculo_id} onChange={(e) => handleVehiculoChange(e.target.value)} className="px-3 py-2 border rounded-lg">
               <option value="">Seleccionar vehículo</option>
@@ -282,13 +265,40 @@ export default function Salidas() {
             </select>
 
             {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
-            <div className="sm:col-span-2 flex gap-2">
+            <div className="sm:col-span-2 flex flex-wrap gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">{editing ? 'Guardar cambios' : 'Crear salida'}</button>
-              <button type="button" onClick={() => { setShowForm(false); setEditing(null) }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="button" onClick={() => { setShowForm(false); setEditing(null); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
             </div>
           </form>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold">Salidas</h1>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
+          <button onClick={() => handleExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
+          <button onClick={() => { setShowForm(true); setEditing(null); setForm(initialForm); setError(''); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva salida</button>
+        </div>
+      </div>
+
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del reporte</span>
+          <input type="month" value={periodMonth} onChange={(e) => setPeriodMonth(e.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Filas por página</span>
+          <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }} className="px-3 py-2 border rounded-lg">
+            {PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} filas</option>)}
+          </select>
+        </label>
+      </div>
 
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[980px]">

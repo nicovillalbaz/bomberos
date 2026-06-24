@@ -306,30 +306,16 @@ export default function Guardias() {
 
   const selectedGuardiaParticipantes = selectedGuardia ? getGuardiaParticipantes(selectedGuardia) : []
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <h1 className="text-2xl font-bold">Guardias</h1>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={() => handleGuardiasMesExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
-          <button onClick={() => handleGuardiasMesExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
-          {isOfficialOrAdmin && (
-            <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
-          )}
+  if (showForm) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Nueva guardia</h1>
+          <p className="text-sm text-gray-500">Definí fecha, responsables y miembros asignados.</p>
         </div>
-      </div>
 
-      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-gray-600">Mes del reporte</span>
-          <input type="month" value={periodMonth} onChange={(event) => setPeriodMonth(event.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
-        </label>
-      </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      {showForm && (
         <div className="surface p-4">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <select value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value as TipoGuardia })} className="px-3 py-2 border rounded-lg">
@@ -365,20 +351,8 @@ export default function Guardias() {
 
             {isConductorRentado && (
               <>
-                <input
-                  required
-                  placeholder="Nombre conductor rentado"
-                  value={form.conductor_rentado_nombre}
-                  onChange={(event) => setForm({ ...form, conductor_rentado_nombre: event.target.value })}
-                  className="px-3 py-2 border rounded-lg"
-                />
-                <input
-                  required
-                  placeholder="Código conductor rentado"
-                  value={form.conductor_rentado_codigo}
-                  onChange={(event) => setForm({ ...form, conductor_rentado_codigo: event.target.value })}
-                  className="px-3 py-2 border rounded-lg"
-                />
+                <input required placeholder="Nombre conductor rentado" value={form.conductor_rentado_nombre} onChange={(event) => setForm({ ...form, conductor_rentado_nombre: event.target.value })} className="px-3 py-2 border rounded-lg" />
+                <input required placeholder="Código conductor rentado" value={form.conductor_rentado_codigo} onChange={(event) => setForm({ ...form, conductor_rentado_codigo: event.target.value })} className="px-3 py-2 border rounded-lg" />
               </>
             )}
 
@@ -395,11 +369,7 @@ export default function Guardias() {
               <div className="mt-2 border rounded-lg p-3 max-h-56 overflow-y-auto space-y-2">
                 {perfilesFiltrados.map((perfil) => (
                   <label key={perfil.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.miembros.includes(perfil.id)}
-                      onChange={() => toggleMiembro(perfil.id)}
-                    />
+                    <input type="checkbox" checked={form.miembros.includes(perfil.id)} onChange={() => toggleMiembro(perfil.id)} />
                     <span>{perfil.nombre} {perfil.apellido}</span>
                   </label>
                 ))}
@@ -407,13 +377,107 @@ export default function Guardias() {
               <p className="text-xs text-gray-500 mt-1">Seleccionados: {form.miembros.length}</p>
             </div>
 
-            <div className="sm:col-span-2 flex gap-2">
+            <div className="sm:col-span-2 flex flex-wrap gap-2">
               <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="button" onClick={() => { setShowForm(false); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
             </div>
           </form>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  if (selectedGuardia) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-500">Asistencia de guardia finalizada</p>
+            <h1 className="text-2xl font-bold">{formatDateOnly(selectedGuardia.fecha)} - {selectedGuardia.hora_inicio} a {selectedGuardia.hora_fin}</h1>
+          </div>
+        </div>
+
+        <div className="surface overflow-auto">
+          <table className="w-full text-sm min-w-[760px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-2 text-left">Persona</th>
+                <th className="p-2">Automático por ingreso</th>
+                <th className="p-2">Ajuste manual</th>
+                <th className="p-2">Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedGuardiaParticipantes.length === 0 ? (
+                <tr>
+                  <td className="p-3 text-center text-gray-500" colSpan={4}>Esta guardia no tiene integrantes asignados.</td>
+                </tr>
+              ) : selectedGuardiaParticipantes.map((perfil) => {
+                const automatico = getAutomaticAttendance(perfil.id, selectedGuardia)
+                const estado = attendanceEdits[perfil.id] || 'auto'
+                const resultado = estado === 'auto' ? automatico : estado === 'presente'
+                return (
+                  <tr key={perfil.id} className="border-t">
+                    <td className="p-2">{getNombre(perfil)}</td>
+                    <td className="p-2 text-center">{automatico ? 'Presente' : 'Sin registro'}</td>
+                    <td className="p-2 text-center">
+                      <select
+                        value={estado}
+                        onChange={(event) => setAttendanceEdits((prev) => ({
+                          ...prev,
+                          [perfil.id]: event.target.value as ManualAttendanceState,
+                        }))}
+                        className="px-3 py-2 border rounded-lg"
+                      >
+                        <option value="auto">Automático</option>
+                        <option value="presente">Presente</option>
+                        <option value="ausente">Ausente</option>
+                      </select>
+                    </td>
+                    <td className="p-2 text-center">
+                      <span className={`px-2 py-1 rounded text-xs ${resultado ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                        {resultado ? 'Asistió' : 'No asistió'}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button onClick={saveAttendanceOverrides} disabled={attendanceSaving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">
+            {attendanceSaving ? 'Guardando...' : 'Guardar asistencia'}
+          </button>
+          <button onClick={closeAttendanceEditor} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <h1 className="text-2xl font-bold">Guardias</h1>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
+          <button onClick={() => handleGuardiasMesExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleGuardiasMesExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
+          {isOfficialOrAdmin && (
+            <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
+          )}
+        </div>
+      </div>
+
+      <div className="surface p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-gray-600">Mes del reporte</span>
+          <input type="month" value={periodMonth} onChange={(event) => setPeriodMonth(event.target.value || toMonthInputValue())} className="px-3 py-2 border rounded-lg" />
+        </label>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[920px]">
@@ -453,78 +517,6 @@ export default function Guardias() {
           </tbody>
         </table>
       </div>
-
-      {selectedGuardia && (
-        <div className="surface p-4 space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Asistencia de guardia finalizada</p>
-              <h2 className="text-xl font-semibold">{formatDateOnly(selectedGuardia.fecha)} - {selectedGuardia.hora_inicio} a {selectedGuardia.hora_fin}</h2>
-            </div>
-            <button onClick={closeAttendanceEditor} className="px-3 py-2 rounded-lg border border-gray-300 text-sm">Cerrar</button>
-          </div>
-
-          <div className="overflow-auto border rounded-lg">
-            <table className="w-full text-sm min-w-[760px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-2 text-left">Persona</th>
-                  <th className="p-2">Automático por ingreso</th>
-                  <th className="p-2">Ajuste manual</th>
-                  <th className="p-2">Resultado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedGuardiaParticipantes.length === 0 ? (
-                  <tr>
-                    <td className="p-3 text-center text-gray-500" colSpan={4}>Esta guardia no tiene integrantes asignados.</td>
-                  </tr>
-                ) : selectedGuardiaParticipantes.map((perfil) => {
-                  const automatico = getAutomaticAttendance(perfil.id, selectedGuardia)
-                  const estado = attendanceEdits[perfil.id] || 'auto'
-                  const resultado = estado === 'auto' ? automatico : estado === 'presente'
-                  return (
-                    <tr key={perfil.id} className="border-t">
-                      <td className="p-2">{getNombre(perfil)}</td>
-                      <td className="p-2 text-center">{automatico ? 'Presente' : 'Sin registro'}</td>
-                      <td className="p-2 text-center">
-                        <select
-                          value={estado}
-                          onChange={(event) => setAttendanceEdits((prev) => ({
-                            ...prev,
-                            [perfil.id]: event.target.value as ManualAttendanceState,
-                          }))}
-                          className="px-3 py-2 border rounded-lg"
-                        >
-                          <option value="auto">Automático</option>
-                          <option value="presente">Presente</option>
-                          <option value="ausente">Ausente</option>
-                        </select>
-                      </td>
-                      <td className="p-2 text-center">
-                        <span className={`px-2 py-1 rounded text-xs ${resultado ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
-                          {resultado ? 'Asistió' : 'No asistió'}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={saveAttendanceOverrides}
-              disabled={attendanceSaving}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60"
-            >
-              {attendanceSaving ? 'Guardando...' : 'Guardar asistencia'}
-            </button>
-            <button onClick={closeAttendanceEditor} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

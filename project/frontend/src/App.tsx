@@ -5,7 +5,6 @@ import RoleRoute from './components/layout/RoleRoute'
 import AppLayout from './components/layout/AppLayout'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
-import Moviles from './pages/moviles/Moviles'
 import Salidas from './pages/salidas/Salidas'
 import Guardias from './pages/guardias/Guardias'
 import Inventario from './pages/inventario/Inventario'
@@ -26,7 +25,7 @@ function App() {
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/mis-actividades" element={<MisActividades />} />
-              <Route path="/moviles" element={<Moviles />} />
+              <Route path="/moviles" element={<Navigate to="/dashboard" replace />} />
               <Route path="/salidas" element={<Salidas />} />
               <Route path="/guardias" element={<Guardias />} />
               <Route path="/inventario/*" element={<Inventario />} />
