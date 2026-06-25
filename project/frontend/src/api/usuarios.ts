@@ -1,4 +1,4 @@
-import { getSessionProfile, supabase } from '../lib/supabase'
+import { getSessionProfile, getSessionUserId, supabase } from '../lib/supabase'
 import type { Perfil, PerfilCreate } from '../types'
 
 const assertAdmin = () => {
@@ -77,4 +77,18 @@ export const toggleUserStatus = async (id: string, estado: 'activo' | 'inactivo'
   const { data, error } = await (supabase as any).from('perfiles').update({ estado }).eq('id', id).select().single()
   if (error) throw error
   return data as Perfil
+}
+
+export const resetUserPassword = async (id: string, newPassword: string) => {
+  assertAdmin()
+  const actorId = getSessionUserId()
+  if (!actorId) throw new Error('No hay sesión activa')
+
+  const { data, error } = await (supabase as any).rpc('admin_reset_password', {
+    p_actor_id: actorId,
+    p_target_user_id: id,
+    p_new_password: newPassword,
+  })
+  if (error) throw error
+  return Boolean(data)
 }

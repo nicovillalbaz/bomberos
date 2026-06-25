@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createPerfil, getPerfiles, toggleUserStatus, updatePerfil } from '../../api/usuarios'
+import { createPerfil, getPerfiles, resetUserPassword, toggleUserStatus, updatePerfil } from '../../api/usuarios'
 import { useAuth } from '../../hooks/useAuth'
 import type { Perfil, RolUsuario } from '../../types'
 
@@ -14,14 +14,23 @@ const initialForm = {
   es_oficial_autorizante: false,
 }
 
+const initialResetForm = {
+  password: '',
+  confirmPassword: '',
+}
+
 export default function Usuarios() {
   const { isAdmin } = useAuth()
   const [usuarios, setUsuarios] = useState<Perfil[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Perfil | null>(null)
+  const [resetTarget, setResetTarget] = useState<Perfil | null>(null)
   const [form, setForm] = useState(initialForm)
+  const [resetForm, setResetForm] = useState(initialResetForm)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
+  const [resetSaving, setResetSaving] = useState(false)
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
 
   const load = async () => {
@@ -47,6 +56,7 @@ export default function Usuarios() {
     if (saving) return
     setSaving(true)
     setError('')
+    setSuccess('')
     try {
       if (editing) {
         await updatePerfil(editing.id, {
@@ -84,6 +94,7 @@ export default function Usuarios() {
   const handleToggleStatus = async (id: string, estado: string) => {
     if (statusSavingId) return
     setError('')
+    setSuccess('')
     setStatusSavingId(id)
     try {
       const nuevo = estado === 'activo' ? 'inactivo' : 'activo'
@@ -98,6 +109,7 @@ export default function Usuarios() {
 
   const startEdit = (u: Perfil) => {
     setEditing(u)
+    setResetTarget(null)
     setForm({
       nombre: u.nombre,
       apellido: u.apellido,
@@ -109,7 +121,46 @@ export default function Usuarios() {
       es_oficial_autorizante: u.es_oficial_autorizante,
     })
     setError('')
+    setSuccess('')
     setShowForm(true)
+  }
+
+  const startResetPassword = (u: Perfil) => {
+    setResetTarget(u)
+    setEditing(null)
+    setShowForm(false)
+    setResetForm(initialResetForm)
+    setError('')
+    setSuccess('')
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetTarget || resetSaving) return
+    setError('')
+    setSuccess('')
+
+    if (resetForm.password.length < 6) {
+      setError('La nueva contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+
+    if (resetForm.password !== resetForm.confirmPassword) {
+      setError('La confirmación no coincide con la nueva contraseña.')
+      return
+    }
+
+    setResetSaving(true)
+    try {
+      await resetUserPassword(resetTarget.id, resetForm.password)
+      setSuccess(`Contraseña restablecida para ${resetTarget.nombre} ${resetTarget.apellido}.`)
+      setResetTarget(null)
+      setResetForm(initialResetForm)
+    } catch (err: any) {
+      setError(err.message || 'No se pudo restablecer la contraseña.')
+    } finally {
+      setResetSaving(false)
+    }
   }
 
   if (showForm) {
@@ -146,6 +197,64 @@ export default function Usuarios() {
     )
   }
 
+  if (resetTarget) {
+    return (
+      <div className="space-y-4 max-w-3xl">
+        <div>
+          <h1 className="text-2xl font-bold">Restablecer contraseña</h1>
+          <p className="text-sm text-gray-500">
+            Usuario: {resetTarget.nombre} {resetTarget.apellido} · {resetTarget.email}
+          </p>
+        </div>
+
+        {error && <div className="surface p-3 text-sm text-red-700 bg-red-50 border border-red-100">{error}</div>}
+
+        <div className="surface p-4">
+          <form onSubmit={handleResetPassword} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input
+              required
+              type="password"
+              placeholder="Nueva contraseña temporal"
+              value={resetForm.password}
+              onChange={(e) => setResetForm({ ...resetForm, password: e.target.value })}
+              className="px-3 py-2 border rounded-lg"
+              autoComplete="new-password"
+            />
+            <input
+              required
+              type="password"
+              placeholder="Confirmar contraseña"
+              value={resetForm.confirmPassword}
+              onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
+              className="px-3 py-2 border rounded-lg"
+              autoComplete="new-password"
+            />
+            <p className="sm:col-span-2 text-sm text-gray-500">
+              El usuario podrá iniciar sesión con esta contraseña y luego cambiarla desde Mi perfil.
+            </p>
+            <div className="sm:col-span-2 flex flex-wrap gap-2">
+              <button type="submit" disabled={resetSaving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">
+                {resetSaving ? 'Guardando...' : 'Restablecer contraseña'}
+              </button>
+              <button
+                type="button"
+                disabled={resetSaving}
+                onClick={() => {
+                  setResetTarget(null)
+                  setResetForm(initialResetForm)
+                  setError('')
+                }}
+                className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between gap-3">
@@ -164,6 +273,7 @@ export default function Usuarios() {
       </div>
 
       {error && <div className="surface p-3 text-sm text-red-700 bg-red-50 border border-red-100">{error}</div>}
+      {success && <div className="surface p-3 text-sm text-green-700 bg-green-50 border border-green-100">{success}</div>}
 
       <div className="surface overflow-auto">
         <table className="w-full text-sm min-w-[760px]">
@@ -175,8 +285,9 @@ export default function Usuarios() {
               <td className="p-2">{u.email}</td>
               <td className="p-2 capitalize">{u.rol}</td>
               <td className="p-2">{u.estado}</td>
-              <td className="p-2 flex gap-2">
+              <td className="p-2 flex flex-wrap gap-2">
                 <button onClick={() => startEdit(u)} className="text-blue-600 text-xs">Editar</button>
+                <button onClick={() => startResetPassword(u)} className="text-primary-700 text-xs">Restablecer contraseña</button>
                 <button disabled={statusSavingId === u.id} onClick={() => handleToggleStatus(u.id, u.estado)} className="text-yellow-600 text-xs disabled:opacity-50">{statusSavingId === u.id ? 'Guardando...' : u.estado === 'activo' ? 'Desactivar' : 'Activar'}</button>
               </td>
             </tr>

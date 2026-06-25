@@ -15,15 +15,17 @@ export default function Header() {
       <div className="flex items-center gap-2 shrink-0">
         <Link
           to="/mi-perfil"
-          className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-2 sm:px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Mi perfil
+          <span className="sm:hidden">Perfil</span>
+          <span className="hidden sm:inline">Mi perfil</span>
         </Link>
         <button
           onClick={signOut}
-          className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-2 sm:px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Cerrar sesión
+          <span className="sm:hidden">Salir</span>
+          <span className="hidden sm:inline">Cerrar sesión</span>
         </button>
       </div>
     </header>

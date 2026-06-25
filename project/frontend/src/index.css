@@ -16,6 +16,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f6f7f9;
 }
 
@@ -188,4 +189,66 @@ main .bg-red-600 {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-bottom-nav-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 4.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.45rem 0.75rem;
+  scroll-padding-inline: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.mobile-bottom-nav-scroll::-webkit-scrollbar {
+  height: 0.25rem;
+}
+
+.mobile-bottom-nav-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.mobile-bottom-nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 3.5rem;
+  width: 3.5rem;
+  min-height: 3.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.mobile-bottom-nav-item-active {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fee2e2;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .mobile-bottom-nav-scroll {
+    min-height: 3.5rem;
+    padding-block: 0.3rem;
+  }
+
+  .mobile-bottom-nav-item {
+    flex-basis: 3.25rem;
+    width: 3.25rem;
+    min-height: 2.8rem;
+  }
 }
