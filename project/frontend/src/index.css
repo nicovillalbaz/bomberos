@@ -191,6 +191,35 @@ main .bg-red-600 {
   gap: 0.5rem;
 }
 
+.responsive-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid #e5e7eb;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-tab {
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 2px solid transparent;
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.responsive-tab.is-active {
+  border-bottom-color: #991b1b;
+  color: #991b1b;
+  font-weight: 700;
+}
+
 .mobile-bottom-nav {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -274,6 +303,13 @@ main .bg-red-600 {
     font-size: 1rem;
   }
 
+  main input[type="date"],
+  main input[type="month"] {
+    font-size: 0.88rem;
+    padding-inline: 0.55rem;
+    letter-spacing: 0;
+  }
+
   main .grid > *,
   main .flex > * {
     min-width: 0;
@@ -344,6 +380,21 @@ main .bg-red-600 {
   main .mobile-compact-action[data-mobile-label="+"]::before {
     font-size: 1.4rem;
     line-height: 0.8;
+  }
+
+  main .responsive-tabs {
+    gap: 0.2rem;
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+    padding-bottom: 0.15rem;
+  }
+
+  main .responsive-tab {
+    padding: 0.5rem 0.55rem;
+    font-size: 0.8rem;
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

@@ -566,21 +566,21 @@ export default function Inventario() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Inventario</h1>
-      <div className="flex gap-4 border-b overflow-x-auto">
+      <div className="responsive-tabs" role="tablist" aria-label="Secciones de inventario">
         {vehiculos.map((vehiculo) => (
           <NavLink
             key={vehiculo.id}
             to={`/inventario/movil/${vehiculo.id}`}
-            className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}
+            className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}
           >
             {vehiculo.nombre}
           </NavLink>
         ))}
-        <NavLink to="/inventario/global" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Global</NavLink>
-        <NavLink to="/inventario/compania" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Compañía</NavLink>
-        <NavLink to="/inventario/deposito" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Depósito</NavLink>
-        <NavLink to="/inventario/ajustes" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Ajustes</NavLink>
-        <NavLink to="/inventario/historial" className={({ isActive }) => `pb-2 whitespace-nowrap ${isActive ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500'}`}>Historial</NavLink>
+        <NavLink to="/inventario/global" className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}>Global</NavLink>
+        <NavLink to="/inventario/compania" className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}>Compañía</NavLink>
+        <NavLink to="/inventario/deposito" className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}>Depósito</NavLink>
+        <NavLink to="/inventario/ajustes" className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}>Ajustes</NavLink>
+        <NavLink to="/inventario/historial" className={({ isActive }) => `responsive-tab ${isActive ? 'is-active' : ''}`}>Historial</NavLink>
       </div>
       {loadingVehiculos ? (
         <div className="surface p-4 text-sm text-gray-500">Cargando inventario...</div>
