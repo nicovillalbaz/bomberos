@@ -240,6 +240,78 @@ main .bg-red-600 {
   border-color: #fee2e2;
 }
 
+@media (max-width: 639px) {
+  main {
+    font-size: 0.95rem;
+  }
+
+  main h1 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  main h2,
+  main h3 {
+    line-height: 1.25;
+  }
+
+  main .surface,
+  main .surface-muted {
+    border-radius: 0.5rem;
+  }
+
+  main form {
+    gap: 0.85rem !important;
+  }
+
+  main input,
+  main select,
+  main textarea {
+    width: 100%;
+    min-height: 2.875rem;
+    font-size: 1rem;
+  }
+
+  main textarea {
+    min-height: 6rem;
+  }
+
+  main form label {
+    min-height: 2.75rem;
+  }
+
+  main form button,
+  main .action-row button,
+  main .page-heading button {
+    min-height: 2.875rem;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+
+  main form .flex.flex-wrap.gap-2 {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  main form .flex.flex-wrap.gap-2 > button {
+    flex: 1 1 100%;
+  }
+
+  main > .space-y-4 > .flex,
+  main > .space-y-4 > .page-heading {
+    align-items: stretch;
+  }
+
+  main > .space-y-4 > .flex button {
+    min-height: 2.75rem;
+  }
+
+  main table button {
+    min-height: 2.25rem;
+    padding-block: 0.35rem;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 520px) {
   .mobile-bottom-nav-scroll {
     min-height: 3.5rem;

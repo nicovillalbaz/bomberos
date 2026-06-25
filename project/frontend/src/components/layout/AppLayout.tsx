@@ -10,10 +10,12 @@ const mobileLinks = [
   { to: '/mis-actividades', label: 'Mis', icon: '✅', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/salidas', label: 'Salidas', icon: '📤', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/guardias', label: 'Guardias', icon: '📋', roles: ['bombero', 'oficial', 'admin'] },
+  { to: '/inventario', label: 'Inventario', icon: '📦', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/servicios', label: 'Servicios', icon: '🚨', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/citaciones', label: 'Citaciones', icon: '🗒️', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/practicas', label: 'Prácticas', icon: '🏋️', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/reportes', label: 'Reportes', icon: '📈', roles: ['oficial', 'admin'] },
+  { to: '/novedades', label: 'Novedades', icon: '📰', roles: ['bombero', 'oficial', 'admin'] },
   { to: '/usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },
 ]
 
