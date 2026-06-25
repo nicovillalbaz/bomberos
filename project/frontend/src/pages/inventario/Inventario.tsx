@@ -526,7 +526,7 @@ function HistorialMovimientosView() {
           <option value="">Todos los usuarios</option>
           {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre} {u.apellido}</option>)}
         </select>
-        <button onClick={load} className="sm:col-span-5 px-4 py-2 bg-primary-600 text-white rounded-lg">Filtrar historial</button>
+        <button onClick={load} aria-label="Filtrar historial" data-mobile-label="filter" className="mobile-compact-action sm:col-span-5 px-4 py-2 bg-primary-600 text-white rounded-lg">Filtrar historial</button>
       </div>
 
       <div className="surface overflow-auto">

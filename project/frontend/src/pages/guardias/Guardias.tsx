@@ -487,11 +487,11 @@ export default function Guardias() {
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <h1 className="text-2xl font-bold">Guardias</h1>
         <div className="flex flex-wrap gap-2">
-          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={() => handleGuardiasMesExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
-          <button onClick={() => handleGuardiasMesExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
+          <button onClick={load} aria-label="Filtrar" data-mobile-label="filter" className="mobile-compact-action px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
+          <button onClick={() => handleGuardiasMesExport('csv')} data-mobile-label="CSV" className="mobile-compact-action px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleGuardiasMesExport('pdf')} data-mobile-label="PDF" className="mobile-compact-action px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
           {isOfficialOrAdmin && (
-            <button onClick={() => { setShowForm(true); loadProfiles() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
+            <button onClick={() => { setShowForm(true); loadProfiles() }} aria-label="Nueva guardia" data-mobile-label="+" className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva guardia</button>
           )}
         </div>
       </div>

@@ -39,7 +39,7 @@ export default function Moviles() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Móviles</h1>
         {isOfficialOrAdmin && (
-          <button onClick={() => { setEditing(null); setForm({ nombre: '', dominio: '', marca: '', modelo: '', anio: 0, tipo: 'camion', estado: 'disponible' }); setShowForm(true) }} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Nuevo</button>
+          <button onClick={() => { setEditing(null); setForm({ nombre: '', dominio: '', marca: '', modelo: '', anio: 0, tipo: 'camion', estado: 'disponible' }); setShowForm(true) }} aria-label="Nuevo móvil" data-mobile-label="+" className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Nuevo</button>
         )}
       </div>
       {isOfficialOrAdmin && showForm && (

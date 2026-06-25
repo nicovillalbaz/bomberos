@@ -144,7 +144,7 @@ export default function Novedades() {
     <div className="space-y-4">
       <div className="flex justify-between">
         <h1 className="text-2xl font-bold">Novedades</h1>
-        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva novedad</button>
+        <button aria-label="Nueva novedad" data-mobile-label="+" onClick={() => setShowForm(true)} className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg">Nueva novedad</button>
       </div>
 
       <div className="space-y-3">

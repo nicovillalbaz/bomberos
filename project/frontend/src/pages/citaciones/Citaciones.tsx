@@ -243,8 +243,10 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">{titulo}</h1>
         <button
+          aria-label={`Nueva ${titulo.toLowerCase()}`}
+          data-mobile-label="+"
           onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg"
+          className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg"
         >
           Nuevo
         </button>

@@ -260,13 +260,15 @@ export default function Usuarios() {
       <div className="flex justify-between gap-3">
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <button
+          aria-label="Nuevo usuario"
+          data-mobile-label="+"
           onClick={() => {
             setEditing(null)
             setForm(initialForm)
             setError('')
             setShowForm(true)
           }}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg"
+          className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg"
         >
           Nuevo usuario
         </button>

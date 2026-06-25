@@ -327,10 +327,10 @@ export default function Servicios() {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <h1 className="text-2xl font-bold">Servicios</h1>
         <div className="flex flex-wrap gap-2">
-          <button onClick={load} className="px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
-          <button onClick={() => handleExport('csv')} className="px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
-          <button onClick={() => handleExport('pdf')} className="px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
-          <button onClick={() => { setShowForm(true); loadAux() }} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
+          <button onClick={load} aria-label="Filtrar" data-mobile-label="filter" className="mobile-compact-action px-3 py-2 bg-gray-200 rounded-lg">Filtrar</button>
+          <button onClick={() => handleExport('csv')} data-mobile-label="CSV" className="mobile-compact-action px-3 py-2 bg-green-600 text-white rounded-lg">Exportar CSV</button>
+          <button onClick={() => handleExport('pdf')} data-mobile-label="PDF" className="mobile-compact-action px-3 py-2 bg-slate-700 text-white rounded-lg">Exportar PDF</button>
+          <button onClick={() => { setShowForm(true); loadAux() }} aria-label="Nuevo servicio" data-mobile-label="+" className="mobile-compact-action px-4 py-2 bg-primary-600 text-white rounded-lg">Nuevo servicio</button>
         </div>
       </div>
 

@@ -309,14 +309,16 @@ export default function Reportes() {
           <button
             type="button"
             onClick={() => handleExport('csv')}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg"
+            data-mobile-label="CSV"
+            className="mobile-compact-action px-4 py-2 bg-green-600 text-white rounded-lg"
           >
             Exportar CSV
           </button>
           <button
             type="button"
             onClick={() => handleExport('pdf')}
-            className="px-4 py-2 bg-slate-700 text-white rounded-lg"
+            data-mobile-label="PDF"
+            className="mobile-compact-action px-4 py-2 bg-slate-700 text-white rounded-lg"
           >
             Exportar PDF
           </button>
