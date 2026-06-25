@@ -203,7 +203,7 @@ function TransferToUbicacionView({
   const materialesVisibles = materialesEditables.filter((m) => {
     const q = busqueda.toLowerCase().trim()
     if (!q) return true
-    return m.nombre.toLowerCase().includes(q) || m.categoria.toLowerCase().includes(q)
+    return m.nombre.toLowerCase().includes(q)
   })
 
   return (
@@ -220,21 +220,19 @@ function TransferToUbicacionView({
 
       {!editando ? (
         <div className="surface overflow-auto">
-          <table className="w-full text-sm min-w-[700px]">
+          <table className="w-full text-sm min-w-[520px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-2 text-left">Material</th>
-                <th className="p-2">Categoría</th>
                 <th className="p-2">Stock en {titulo}</th>
               </tr>
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr><td className="p-3 text-gray-500" colSpan={3}>No hay material con stock en esta ubicación.</td></tr>
+                <tr><td className="p-3 text-gray-500" colSpan={2}>No hay material con stock en esta ubicación.</td></tr>
               ) : data.map((r) => (
                 <tr key={r.material_id} className="border-t">
                   <td className="p-2">{r.material?.nombre}</td>
-                  <td className="p-2">{r.material?.categoria}</td>
                   <td className="p-2">{r.cantidad}</td>
                 </tr>
               ))}
@@ -258,11 +256,10 @@ function TransferToUbicacionView({
             />
           </div>
           <div className="surface overflow-auto">
-            <table className="w-full text-sm min-w-[980px]">
+            <table className="w-full text-sm min-w-[860px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="p-2 text-left">Material</th>
-                  <th className="p-2">Categoría</th>
                   <th className="p-2">Stock en {titulo}</th>
                   <th className="p-2">Origen</th>
                   <th className="p-2">Cant</th>
@@ -271,7 +268,7 @@ function TransferToUbicacionView({
               </thead>
               <tbody>
                 {materialesVisibles.length === 0 ? (
-                  <tr><td className="p-3 text-gray-500" colSpan={6}>No hay materiales con stock global para editar.</td></tr>
+                  <tr><td className="p-3 text-gray-500" colSpan={5}>No hay materiales con stock global para editar.</td></tr>
                 ) : materialesVisibles.map((m) => {
                   const origenTipo = origen[m.id] || origenOpciones[0]
                   const movilId = origenMovil[m.id] || ''
@@ -282,7 +279,6 @@ function TransferToUbicacionView({
                   return (
                     <tr key={m.id} className="border-t">
                       <td className="p-2">{m.nombre}</td>
-                      <td className="p-2">{m.categoria}</td>
                       <td className="p-2">{stockDestino[m.id] || 0}</td>
                       <td className="p-2">
                         <div className="space-y-2">
@@ -376,13 +372,12 @@ function InventarioGlobalView() {
   useEffect(() => { getInventarioGlobal().then((v) => setData((v || []).filter((r: any) => Number(r.total_general ?? 0) > 0)) ) }, [])
   return (
     <div className="surface overflow-auto">
-      <table className="w-full text-sm min-w-[700px]">
-        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Categoría</th><th>Móviles</th><th>Compañía</th><th>Depósito</th><th>Total</th></tr></thead>
+      <table className="w-full text-sm min-w-[620px]">
+        <thead className="bg-gray-50"><tr><th className="p-2 text-left">Material</th><th>Móviles</th><th>Compañía</th><th>Depósito</th><th>Total</th></tr></thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i} className="border-t">
               <td className="p-2">{String(r.material ?? '')}</td>
-              <td className="p-2">{String(r.categoria ?? '')}</td>
               <td className="p-2">{String(r.total_moviles ?? 0)}</td>
               <td className="p-2">{String(r.total_compania ?? 0)}</td>
               <td className="p-2">{String(r.total_deposito ?? 0)}</td>
