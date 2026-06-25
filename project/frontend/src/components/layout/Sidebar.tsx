@@ -4,6 +4,7 @@ import type { RolUsuario } from '../../types'
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['bombero', 'oficial', 'admin'] },
+  { path: '/mi-perfil', label: 'Mi perfil', icon: '👤', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/mis-actividades', label: 'Mis actividades', icon: '✅', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/salidas', label: 'Salidas', icon: '📤', roles: ['bombero', 'oficial', 'admin'] },
   { path: '/guardias', label: 'Guardias', icon: '📋', roles: ['bombero', 'oficial', 'admin'] },

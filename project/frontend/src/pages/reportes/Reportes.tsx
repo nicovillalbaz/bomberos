@@ -36,8 +36,6 @@ type PercentageRow = PercentageFields & {
 type ServiceTotalRow = {
   tipo: string
   total: number
-  finalizados: number
-  borradores: number
 }
 
 const percent = (asistidas: number, total: number, emptyPercent: number) =>
@@ -213,14 +211,17 @@ export default function Reportes() {
       .filter((servicio) => servicio.tipo !== 'citacion' && servicio.tipo !== 'practica')
       .forEach((servicio) => {
         const key = servicio.tipo || 'sin_tipo'
-        const current = map.get(key) ?? { tipo: key, total: 0, finalizados: 0, borradores: 0 }
+        const current = map.get(key) ?? { tipo: key, total: 0 }
         current.total += 1
-        if (servicio.estado === 'completo') current.finalizados += 1
-        else current.borradores += 1
         map.set(key, current)
       })
     return [...map.values()].sort((a, b) => b.total - a.total || normalizeServiceType(a.tipo).localeCompare(normalizeServiceType(b.tipo)))
   }, [servicios])
+
+  const serviceGrandTotal = useMemo(
+    () => serviceTotals.reduce((sum, row) => sum + row.total, 0),
+    [serviceTotals],
+  )
 
   const monthLabel = useMemo(() => {
     const [year, monthNumber] = month.split('-').map(Number)
@@ -260,9 +261,7 @@ export default function Reportes() {
   const buildServiceExportRows = () => serviceTotals.map((row) => ({
     servicio: normalizeServiceType(row.tipo),
     total: row.total,
-    finalizados: row.finalizados,
-    borradores: row.borradores,
-  }))
+  })).concat(serviceTotals.length > 0 ? [{ servicio: 'TOTAL', total: serviceGrandTotal }] : [])
 
   const handleExport = (format: 'csv' | 'pdf') => {
     const rows = activeTab === 'porcentajes' ? buildPercentageExportRows() : buildServiceExportRows()
@@ -431,23 +430,27 @@ export default function Reportes() {
               <tr>
                 <th className="p-2 text-left">Servicio</th>
                 <th className="p-2 text-left">Total</th>
-                <th className="p-2 text-left">Finalizados</th>
-                <th className="p-2 text-left">Borradores</th>
               </tr>
             </thead>
             <tbody>
               {serviceTotals.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-gray-500">Sin servicios en el mes.</td>
+                  <td colSpan={2} className="p-4 text-center text-gray-500">Sin servicios en el mes.</td>
                 </tr>
-              ) : serviceTotals.map((row) => (
-                <tr key={row.tipo} className="border-t">
-                  <td className="p-2 font-medium">{normalizeServiceType(row.tipo)}</td>
-                  <td className="p-2">{row.total}</td>
-                  <td className="p-2">{row.finalizados}</td>
-                  <td className="p-2">{row.borradores}</td>
-                </tr>
-              ))}
+              ) : (
+                <>
+                  {serviceTotals.map((row) => (
+                    <tr key={row.tipo} className="border-t">
+                      <td className="p-2 font-medium">{normalizeServiceType(row.tipo)}</td>
+                      <td className="p-2">{row.total}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t bg-gray-50 font-semibold">
+                    <td className="p-2">TOTAL</td>
+                    <td className="p-2">{serviceGrandTotal}</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>

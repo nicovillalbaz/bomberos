@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { Guardia, NovedadGlobal, Perfil, Servicio, Vehiculo } from '../../types'
+import type { Guardia, NovedadGlobal, Perfil, Servicio } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { createNovedadIngresoRetiroCompania, getCompanyPresenceEvents, getNovedades } from '../../api/novedades'
 import { getServicioById } from '../../api/servicios'
@@ -23,12 +23,12 @@ export default function Dashboard() {
   const { profile } = useAuth()
   const [novedades, setNovedades] = useState<NovedadGlobal[]>([])
   const [servicioResumen, setServicioResumen] = useState<Record<string, string>>({})
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [guardiaHoy, setGuardiaHoy] = useState<Guardia[]>([])
   const [presentes, setPresentes] = useState<Perfil[]>([])
   const [loading, setLoading] = useState(true)
   const [enCompania, setEnCompania] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [presenceSaving, setPresenceSaving] = useState(false)
   const limiteNovedades = 10
 
   useEffect(() => {
@@ -44,9 +44,8 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       const hoy = new Date().toISOString().split('T')[0]
-      const [nov, veh, guardias, presencia] = await Promise.all([
+      const [nov, guardias, presencia] = await Promise.all([
         getNovedades(limiteNovedades),
-        supabase.from('vehiculos').select('*').eq('estado', 'disponible'),
         supabase.from('guardias').select('*, a_cargo:perfiles!a_cargo_id(nombre,apellido), conductor:perfiles!conductor_id(nombre,apellido)').eq('fecha', hoy),
         getCompanyPresenceEvents(),
       ])
@@ -75,7 +74,6 @@ export default function Dashboard() {
       } else {
         setServicioResumen({})
       }
-      setVehiculos((veh as any).data || [])
       setGuardiaHoy((guardias as any).data || [])
       const latestByUser = new Map<string, typeof presencia[number]>()
       presencia.forEach((event) => latestByUser.set(event.usuario_id, event))
@@ -110,11 +108,17 @@ export default function Dashboard() {
   }
 
   const registrar = async (accion: 'ingreso' | 'retiro') => {
-    await createNovedadIngresoRetiroCompania(accion)
-    setEnCompania(accion === 'ingreso')
-    setFeedback(accion === 'ingreso' ? 'Ingreso registrado correctamente' : 'Retiro registrado correctamente')
-    setTimeout(() => setFeedback(''), 2200)
-    await loadData()
+    if (presenceSaving) return
+    setPresenceSaving(true)
+    try {
+      await createNovedadIngresoRetiroCompania(accion)
+      setEnCompania(accion === 'ingreso')
+      setFeedback(accion === 'ingreso' ? 'Ingreso registrado correctamente' : 'Retiro registrado correctamente')
+      setTimeout(() => setFeedback(''), 2200)
+      await loadData()
+    } finally {
+      setPresenceSaving(false)
+    }
   }
 
   const parseSalidaDeMovil = (n: NovedadGlobal) => {
@@ -176,17 +180,19 @@ export default function Dashboard() {
         </div>
         {!enCompania ? (
           <button
+            disabled={presenceSaving}
             onClick={() => registrar('ingreso')}
-            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:opacity-60"
           >
-            Ingreso en la compañía
+            {presenceSaving ? 'Registrando...' : 'Ingreso en la compañía'}
           </button>
         ) : (
           <button
+            disabled={presenceSaving}
             onClick={() => registrar('retiro')}
-            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-60"
           >
-            Retiro de la compañía
+            {presenceSaving ? 'Registrando...' : 'Retiro de la compañía'}
           </button>
         )}
         {feedback && (
@@ -194,21 +200,6 @@ export default function Dashboard() {
             {feedback}
           </div>
         )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="surface p-4">
-          <p className="text-sm text-gray-500">Vehículos disponibles</p>
-          <p className="text-3xl font-bold text-green-600">{vehiculos.length}</p>
-        </div>
-        <div className="surface p-4">
-          <p className="text-sm text-gray-500">Guardias hoy</p>
-          <p className="text-3xl font-bold text-blue-600">{guardiaHoy.length}</p>
-        </div>
-        <div className="surface p-4">
-          <p className="text-sm text-gray-500">Novedades recientes</p>
-          <p className="text-3xl font-bold text-amber-600">{novedades.length}</p>
-        </div>
       </div>
 
       <div className="surface p-4">

@@ -26,6 +26,7 @@ import {
   parseDateOnly,
   toMonthInputValue,
 } from '../../lib/datetime'
+import SearchableSelect, { type SearchableSelectOption } from '../../components/SearchableSelect'
 
 type GuardiaMiembroItem = { miembro?: Perfil | null } | Perfil
 type GuardiaConMiembros = Omit<Guardia, 'miembros'> & { miembros?: GuardiaMiembroItem[] }
@@ -83,6 +84,7 @@ export default function Guardias() {
   const [selectedGuardia, setSelectedGuardia] = useState<GuardiaConMiembros | null>(null)
   const [attendanceEdits, setAttendanceEdits] = useState<Record<string, ManualAttendanceState>>({})
   const [attendanceInitial, setAttendanceInitial] = useState<Record<string, ManualAttendanceState>>({})
+  const [saving, setSaving] = useState(false)
   const [attendanceSaving, setAttendanceSaving] = useState(false)
   const [form, setForm] = useState({
     fechas: [''],
@@ -151,6 +153,21 @@ export default function Guardias() {
     const needle = miembroSearch.toLowerCase()
     return perfiles.filter((perfil) => `${perfil.nombre} ${perfil.apellido}`.toLowerCase().includes(needle))
   }, [perfiles, miembroSearch])
+  const responsableOptions = useMemo<SearchableSelectOption[]>(() => perfiles.map((perfil) => ({
+    value: perfil.id,
+    label: getNombre(perfil),
+    hint: perfil.codigo_interno ? `Código ${perfil.codigo_interno}` : undefined,
+  })), [perfiles])
+  const conductorOptions = useMemo<SearchableSelectOption[]>(() => [
+    ...perfiles
+      .filter((perfil) => perfil.es_conductor_habilitado)
+      .map((perfil) => ({
+        value: perfil.id,
+        label: getNombre(perfil),
+        hint: perfil.codigo_interno ? `Código ${perfil.codigo_interno}` : undefined,
+      })),
+    { value: 'rentado', label: 'Rentado' },
+  ], [perfiles])
 
   const setFechaAt = (index: number, value: string) => {
     setForm((prev) => ({ ...prev, fechas: prev.fechas.map((fecha, i) => (i === index ? value : fecha)) }))
@@ -169,6 +186,7 @@ export default function Guardias() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (saving) return
     const fechasValidas = form.fechas.filter(Boolean)
     if (fechasValidas.length === 0) {
       setError('Debes seleccionar al menos una fecha.')
@@ -198,12 +216,17 @@ export default function Guardias() {
       }
     })
 
-    await createMultipleGuardias(payload as any)
-    setShowForm(false)
-    setError('')
-    setMiembroSearch('')
-    setForm({ fechas: [''], tipo: 'voluntaria', a_cargo_id: '', conductor_id: '', conductor_rentado_nombre: '', conductor_rentado_codigo: '', miembros: [] })
-    load()
+    setSaving(true)
+    try {
+      await createMultipleGuardias(payload as any)
+      setShowForm(false)
+      setError('')
+      setMiembroSearch('')
+      setForm({ fechas: [''], tipo: 'voluntaria', a_cargo_id: '', conductor_id: '', conductor_rentado_nombre: '', conductor_rentado_codigo: '', miembros: [] })
+      await load()
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getPreviousMonthGuardias = async () => {
@@ -280,7 +303,7 @@ export default function Guardias() {
   }
 
   const saveAttendanceOverrides = async () => {
-    if (!selectedGuardia) return
+    if (!selectedGuardia || attendanceSaving) return
     const changes = Object.entries(attendanceEdits).filter(([perfilId, estado]) => attendanceInitial[perfilId] !== estado)
 
     setAttendanceSaving(true)
@@ -338,16 +361,19 @@ export default function Guardias() {
               <button type="button" onClick={addFecha} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">Agregar fecha</button>
             </div>
 
-            <select value={form.a_cargo_id} onChange={(event) => setForm({ ...form, a_cargo_id: event.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">{isEspecial ? 'A cargo (opcional)' : 'A cargo'}</option>
-              {perfiles.map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nombre} {perfil.apellido}</option>)}
-            </select>
+            <SearchableSelect
+              value={form.a_cargo_id}
+              onChange={(value) => setForm({ ...form, a_cargo_id: value })}
+              options={responsableOptions}
+              placeholder={isEspecial ? 'Buscar a cargo (opcional)' : 'Buscar a cargo'}
+            />
 
-            <select value={form.conductor_id} onChange={(event) => setForm({ ...form, conductor_id: event.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">{isEspecial ? 'Conductor (opcional)' : 'Conductor'}</option>
-              {perfiles.filter((perfil) => perfil.es_conductor_habilitado).map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nombre} {perfil.apellido}</option>)}
-              <option value="rentado">Rentado</option>
-            </select>
+            <SearchableSelect
+              value={form.conductor_id}
+              onChange={(value) => setForm({ ...form, conductor_id: value })}
+              options={conductorOptions}
+              placeholder={isEspecial ? 'Buscar conductor (opcional)' : 'Buscar conductor'}
+            />
 
             {isConductorRentado && (
               <>
@@ -378,8 +404,8 @@ export default function Guardias() {
             </div>
 
             <div className="sm:col-span-2 flex flex-wrap gap-2">
-              <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
-              <button type="button" onClick={() => { setShowForm(false); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">{saving ? 'Guardando...' : 'Crear'}</button>
+              <button type="button" disabled={saving} onClick={() => { setShowForm(false); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
             </div>
           </form>
         </div>
@@ -450,7 +476,7 @@ export default function Guardias() {
           <button onClick={saveAttendanceOverrides} disabled={attendanceSaving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">
             {attendanceSaving ? 'Guardando...' : 'Guardar asistencia'}
           </button>
-          <button onClick={closeAttendanceEditor} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+          <button onClick={closeAttendanceEditor} disabled={attendanceSaving} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
         </div>
       </div>
     )

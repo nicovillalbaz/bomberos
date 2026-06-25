@@ -100,6 +100,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
 
   const crearEvento = async (e: FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setSaving(true)
     try {
       const creado = await createServicio({
@@ -122,7 +123,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
 
   const guardarAsistencia = async (e: FormEvent) => {
     e.preventDefault()
-    if (!detalle) return
+    if (!detalle || saving) return
     setSaving(true)
     try {
       await setServicioPersonal(
@@ -178,7 +179,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
               <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="button" disabled={saving} onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
             </div>
           </form>
         </div>
@@ -229,7 +230,7 @@ function CitacionesBase({ tipo, titulo }: BaseProps) {
               <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">
                 {saving ? 'Guardando...' : 'Guardar asistencia'}
               </button>
-              <button type="button" onClick={() => { setDetalleOpen(false); setDetalle(null) }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="button" disabled={saving} onClick={() => { setDetalleOpen(false); setDetalle(null) }} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
             </div>
           </form>
         </div>

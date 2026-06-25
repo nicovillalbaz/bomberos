@@ -152,6 +152,7 @@ export default function MisActividades() {
   }, [asistencias, guardias, profile?.id, servicios])
 
   const markGuardia = async (guardia: GuardiaConMiembros) => {
+    if (savingId) return
     if (getGuardiaInterval(guardia).inicio > new Date()) {
       setError('La asistencia solo puede marcarse cuando la guardia está en curso o ya pasó.')
       return

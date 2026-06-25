@@ -59,6 +59,7 @@ function TransferToUbicacionView({
   const [cantidad, setCantidad] = useState<Record<string, number>>({})
   const [motivo, setMotivo] = useState('')
   const [stockMoviles, setStockMoviles] = useState<Record<string, Record<string, number>>>({})
+  const [registrandoId, setRegistrandoId] = useState<string | null>(null)
 
   const labelMap: Record<InventarioOrigenTipo, string> = {
     deposito: 'Depósito',
@@ -169,6 +170,7 @@ function TransferToUbicacionView({
   }
 
   const registrar = async (materialId: string) => {
+    if (registrandoId) return
     const origenTipo = origen[materialId] || origenOpciones[0]
     const cantidadActual = Number(cantidad[materialId] || 0)
     if (cantidadActual <= 0) return
@@ -178,19 +180,24 @@ function TransferToUbicacionView({
     if (origenTipo === 'movil' && !origenRef) return
     if (Number.isFinite(max) && cantidadActual > max) return
 
-    await transferirInventario({
-      material_id: materialId,
-      cantidad: cantidadActual,
-      origen_tipo: origenTipo,
-      origen_ref: origenRef,
-      destino_tipo: destinoTipo,
-      destino_ref: destinoRef ?? null,
-      motivo: motivo || `Movimiento hacia ${titulo}`,
-      observacion: null,
-    })
+    setRegistrandoId(materialId)
+    try {
+      await transferirInventario({
+        material_id: materialId,
+        cantidad: cantidadActual,
+        origen_tipo: origenTipo,
+        origen_ref: origenRef,
+        destino_tipo: destinoTipo,
+        destino_ref: destinoRef ?? null,
+        motivo: motivo || `Movimiento hacia ${titulo}`,
+        observacion: null,
+      })
 
-    setCantidad((prev) => ({ ...prev, [materialId]: 0 }))
-    await load()
+      setCantidad((prev) => ({ ...prev, [materialId]: 0 }))
+      await load()
+    } finally {
+      setRegistrandoId(null)
+    }
   }
 
   const materialesVisibles = materialesEditables.filter((m) => {
@@ -344,12 +351,13 @@ function TransferToUbicacionView({
                           onClick={() => registrar(m.id)}
                           className="px-3 py-1.5 bg-primary-600 text-white rounded-lg"
                           disabled={
+                            registrandoId === m.id ||
                             qty <= 0 ||
                             (origenTipo === 'movil' && !movilId) ||
                             (origenTipo !== 'externo' && Number.isFinite(max) && qty > max)
                           }
                         >
-                          Aplicar
+                          {registrandoId === m.id ? 'Aplicando...' : 'Aplicar'}
                         </button>
                       </td>
                     </tr>
@@ -398,6 +406,7 @@ function AjustesMovimientosView() {
   const [cantidad, setCantidad] = useState(1)
   const [motivo, setMotivo] = useState('')
   const [observacion, setObservacion] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     Promise.all([getMateriales(), getVehiculosDisponibles()]).then(([m, v]) => {
@@ -408,22 +417,27 @@ function AjustesMovimientosView() {
 
   const registrar = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!materialId || cantidad <= 0) return
+    if (saving || !materialId || cantidad <= 0) return
 
-    await transferirInventario({
-      material_id: materialId,
-      cantidad,
-      origen_tipo: origenTipo,
-      origen_ref: origenTipo === 'movil' ? origenMovilId : null,
-      destino_tipo: destinoTipo,
-      destino_ref: destinoTipo === 'movil' ? destinoMovilId : null,
-      motivo: motivo || (origenTipo === 'externo' ? 'Donación/ingreso externo' : 'Ajuste de inventario'),
-      observacion: observacion || null,
-    })
+    setSaving(true)
+    try {
+      await transferirInventario({
+        material_id: materialId,
+        cantidad,
+        origen_tipo: origenTipo,
+        origen_ref: origenTipo === 'movil' ? origenMovilId : null,
+        destino_tipo: destinoTipo,
+        destino_ref: destinoTipo === 'movil' ? destinoMovilId : null,
+        motivo: motivo || (origenTipo === 'externo' ? 'Donación/ingreso externo' : 'Ajuste de inventario'),
+        observacion: observacion || null,
+      })
 
-    setCantidad(1)
-    setMotivo('')
-    setObservacion('')
+      setCantidad(1)
+      setMotivo('')
+      setObservacion('')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -461,7 +475,7 @@ function AjustesMovimientosView() {
         <input type="number" min={1} value={cantidad} onChange={(e) => setCantidad(Number(e.target.value) || 1)} className="px-3 py-2 border rounded-lg" />
         <input placeholder="Motivo (ej: rotura, descarte, donación)" value={motivo} onChange={(e) => setMotivo(e.target.value)} className="px-3 py-2 border rounded-lg" />
         <input placeholder="Observación" value={observacion} onChange={(e) => setObservacion(e.target.value)} className="sm:col-span-3 px-3 py-2 border rounded-lg" />
-        <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Registrar movimiento</button>
+        <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">{saving ? 'Registrando...' : 'Registrar movimiento'}</button>
       </form>
       <p className="text-sm text-gray-600">Usá este formulario para registrar donaciones (origen externo) y bajas por rotura/descarte (destino baja o consumo).</p>
     </div>

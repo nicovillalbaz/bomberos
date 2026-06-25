@@ -14,6 +14,7 @@ import Novedades from './pages/novedades/Novedades'
 import Reportes from './pages/reportes/Reportes'
 import Usuarios from './pages/usuarios/Usuarios'
 import MisActividades from './pages/actividades/MisActividades'
+import MiPerfil from './pages/perfil/MiPerfil'
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/mi-perfil" element={<MiPerfil />} />
               <Route path="/mis-actividades" element={<MisActividades />} />
               <Route path="/moviles" element={<Navigate to="/dashboard" replace />} />
               <Route path="/salidas" element={<Salidas />} />

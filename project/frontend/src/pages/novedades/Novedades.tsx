@@ -18,6 +18,7 @@ export default function Novedades() {
   const [serviceCtx, setServiceCtx] = useState<Record<string, ServicioResumen>>({})
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ tipo: 'general', titulo: '', descripcion: '', modulo_origen: 'manual' })
+  const [saving, setSaving] = useState(false)
 
   const load = async () => {
     const data = await getNovedades(120)
@@ -98,10 +99,16 @@ export default function Novedades() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createNovedadManual(form)
-    setShowForm(false)
-    setForm({ tipo: 'general', titulo: '', descripcion: '', modulo_origen: 'manual' })
-    await load()
+    if (saving) return
+    setSaving(true)
+    try {
+      await createNovedadManual(form)
+      setShowForm(false)
+      setForm({ tipo: 'general', titulo: '', descripcion: '', modulo_origen: 'manual' })
+      await load()
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (showForm) {
@@ -124,8 +131,8 @@ export default function Novedades() {
             </select>
             <textarea required placeholder="Descripción" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">Crear</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">{saving ? 'Guardando...' : 'Crear'}</button>
+              <button type="button" disabled={saving} onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
             </div>
           </form>
         </div>

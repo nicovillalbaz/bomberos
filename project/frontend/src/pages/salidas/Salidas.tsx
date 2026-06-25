@@ -5,6 +5,7 @@ import { getVehiculosDisponibles } from '../../api/vehiculos'
 import { exportRowsToCSV, exportRowsToPrintablePDF } from '../../lib/export'
 import { getMonthRange, toMonthInputValue } from '../../lib/datetime'
 import type { Perfil, Salida, Vehiculo } from '../../types'
+import SearchableSelect, { type SearchableSelectOption } from '../../components/SearchableSelect'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
@@ -36,6 +37,7 @@ export default function Salidas() {
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const isRentado = form.conductor_id === 'rentado'
   const isMotivoOtro = form.motivo.trim().toLowerCase() === 'otro'
@@ -62,6 +64,14 @@ export default function Salidas() {
   }, [])
 
   const selectedVehiculo = useMemo(() => vehiculos.find((v) => v.id === form.vehiculo_id), [vehiculos, form.vehiculo_id])
+  const conductorOptions = useMemo<SearchableSelectOption[]>(() => [
+    ...conductores.map((conductor) => ({
+      value: conductor.id,
+      label: `${conductor.nombre} ${conductor.apellido}`.trim(),
+      hint: conductor.codigo_interno ? `Código ${conductor.codigo_interno}` : undefined,
+    })),
+    { value: 'rentado', label: 'Rentado' },
+  ], [conductores])
   const paginated = useMemo(() => salidas.slice((page - 1) * pageSize, page * pageSize), [salidas, page, pageSize])
   const totalPages = Math.max(1, Math.ceil(salidas.length / pageSize))
 
@@ -95,34 +105,40 @@ export default function Salidas() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     const validationError = validate()
     if (validationError) {
       setError(validationError)
       return
     }
+    setSaving(true)
 
-    await createSalida({
-      vehiculo_id: form.vehiculo_id,
-      conductor_id: isRentado ? null : (form.conductor_id || null),
-      conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
-      conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
-      destino: form.destino,
-      motivo: form.motivo,
-      motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
-      km_salida: form.km_salida,
-      km_llegada: form.km_llegada,
-      fecha_llegada: new Date().toISOString(),
-      hay_combustible: form.hay_combustible,
-      monto_combustible: form.hay_combustible ? Number(form.monto_combustible) : null,
-      autorizacion_id: form.autorizacion_id || null,
-      observacion: form.observacion || null,
-      fecha_salida: new Date().toISOString(),
-    } as any)
+    try {
+      await createSalida({
+        vehiculo_id: form.vehiculo_id,
+        conductor_id: isRentado ? null : (form.conductor_id || null),
+        conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
+        conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
+        destino: form.destino,
+        motivo: form.motivo,
+        motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
+        km_salida: form.km_salida,
+        km_llegada: form.km_llegada,
+        fecha_llegada: new Date().toISOString(),
+        hay_combustible: form.hay_combustible,
+        monto_combustible: form.hay_combustible ? Number(form.monto_combustible) : null,
+        autorizacion_id: form.autorizacion_id || null,
+        observacion: form.observacion || null,
+        fecha_salida: new Date().toISOString(),
+      } as any)
 
-    setError('')
-    setShowForm(false)
-    setForm(initialForm)
-    await load()
+      setError('')
+      setShowForm(false)
+      setForm(initialForm)
+      await load()
+    } finally {
+      setSaving(false)
+    }
   }
 
   const startEdit = (s: Salida) => {
@@ -147,32 +163,37 @@ export default function Salidas() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editing) return
+    if (!editing || saving) return
     const validationError = validate()
     if (validationError) {
       setError(validationError)
       return
     }
-    await updateSalida(editing.id, {
-      vehiculo_id: form.vehiculo_id,
-      conductor_id: isRentado ? null : (form.conductor_id || null),
-      conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
-      conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
-      destino: form.destino,
-      motivo: form.motivo,
-      motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
-      km_salida: form.km_salida,
-      km_llegada: form.km_llegada,
-      fecha_llegada: new Date().toISOString(),
-      hay_combustible: form.hay_combustible,
-      monto_combustible: form.hay_combustible ? Number(form.monto_combustible) : null,
-      autorizacion_id: form.autorizacion_id || null,
-      observacion: form.observacion || null,
-    } as any)
-    setEditing(null)
-    setShowForm(false)
-    setForm(initialForm)
-    await load()
+    setSaving(true)
+    try {
+      await updateSalida(editing.id, {
+        vehiculo_id: form.vehiculo_id,
+        conductor_id: isRentado ? null : (form.conductor_id || null),
+        conductor_rentado_nombre: isRentado ? form.conductor_rentado_nombre : null,
+        conductor_rentado_codigo: isRentado ? form.conductor_rentado_codigo : null,
+        destino: form.destino,
+        motivo: form.motivo,
+        motivo_descripcion: isMotivoOtro ? form.motivo_descripcion : null,
+        km_salida: form.km_salida,
+        km_llegada: form.km_llegada,
+        fecha_llegada: new Date().toISOString(),
+        hay_combustible: form.hay_combustible,
+        monto_combustible: form.hay_combustible ? Number(form.monto_combustible) : null,
+        autorizacion_id: form.autorizacion_id || null,
+        observacion: form.observacion || null,
+      } as any)
+      setEditing(null)
+      setShowForm(false)
+      setForm(initialForm)
+      await load()
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getPreviousMonthSalidaRows = async () => {
@@ -228,11 +249,12 @@ export default function Salidas() {
               {vehiculos.map((v) => <option key={v.id} value={v.id}>{v.nombre} - {v.dominio}</option>)}
             </select>
 
-            <select value={form.conductor_id} onChange={(e) => setForm({ ...form, conductor_id: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="">Seleccionar conductor</option>
-              {conductores.map((c) => <option key={c.id} value={c.id}>{c.nombre} {c.apellido}</option>)}
-              <option value="rentado">Rentado</option>
-            </select>
+            <SearchableSelect
+              value={form.conductor_id}
+              onChange={(value) => setForm({ ...form, conductor_id: value })}
+              options={conductorOptions}
+              placeholder="Buscar conductor"
+            />
 
             {isRentado && (
               <>
@@ -266,8 +288,8 @@ export default function Salidas() {
 
             {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
             <div className="sm:col-span-2 flex flex-wrap gap-2">
-              <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg">{editing ? 'Guardar cambios' : 'Crear salida'}</button>
-              <button type="button" onClick={() => { setShowForm(false); setEditing(null); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-60">{saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear salida'}</button>
+              <button type="button" disabled={saving} onClick={() => { setShowForm(false); setEditing(null); setError('') }} className="px-4 py-2 bg-gray-300 rounded-lg disabled:opacity-60">Cancelar</button>
             </div>
           </form>
         </div>

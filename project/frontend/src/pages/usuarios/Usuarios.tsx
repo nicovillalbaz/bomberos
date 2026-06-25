@@ -22,6 +22,7 @@ export default function Usuarios() {
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
 
   const load = async () => {
     const data = await getPerfiles()
@@ -43,6 +44,7 @@ export default function Usuarios() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setSaving(true)
     setError('')
     try {
@@ -80,13 +82,17 @@ export default function Usuarios() {
   }
 
   const handleToggleStatus = async (id: string, estado: string) => {
+    if (statusSavingId) return
     setError('')
+    setStatusSavingId(id)
     try {
       const nuevo = estado === 'activo' ? 'inactivo' : 'activo'
       await toggleUserStatus(id, nuevo)
       await load()
     } catch (err: any) {
       setError(err.message || 'No se pudo cambiar el estado del usuario.')
+    } finally {
+      setStatusSavingId(null)
     }
   }
 
@@ -171,7 +177,7 @@ export default function Usuarios() {
               <td className="p-2">{u.estado}</td>
               <td className="p-2 flex gap-2">
                 <button onClick={() => startEdit(u)} className="text-blue-600 text-xs">Editar</button>
-                <button onClick={() => handleToggleStatus(u.id, u.estado)} className="text-yellow-600 text-xs">{u.estado === 'activo' ? 'Desactivar' : 'Activar'}</button>
+                <button disabled={statusSavingId === u.id} onClick={() => handleToggleStatus(u.id, u.estado)} className="text-yellow-600 text-xs disabled:opacity-50">{statusSavingId === u.id ? 'Guardando...' : u.estado === 'activo' ? 'Desactivar' : 'Activar'}</button>
               </td>
             </tr>
           ))}</tbody>
